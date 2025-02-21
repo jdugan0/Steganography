@@ -40,13 +40,16 @@ public class Image {
         BufferedImage image = new BufferedImage(i.width, i.height, BufferedImage.TYPE_INT_RGB);
         for (int x = 0; x < i.width; x++) {
             for (int y = 0; y < i.height; y++) {
-                int rgb = i.r[x][y];
+                int r = i.r[x][y] & 0xFF;
+                int g = i.g[x][y] & 0xFF;
+                int b = i.b[x][y] & 0xFF;
+
+                int rgb = (r << 16) | (g << 8) | b;
                 image.setRGB(x, y, rgb);
             }
         }
         return image;
     }
-    
 
     public static Image displayFourier(Complex[][] freqData) {
         int rows = freqData.length;
