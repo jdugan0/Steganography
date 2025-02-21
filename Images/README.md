@@ -1,0 +1,1 @@
+**Add images into appropriate folders**
