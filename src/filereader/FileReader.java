@@ -8,6 +8,7 @@ public class FileReader {
     public static Image readImage(String relativeFilePath) {
         try {
             String basePath = new File("").getAbsolutePath();
+            basePath = new File(basePath).getParentFile().getParent();
             String fullPath = basePath + File.separator + relativeFilePath;
             BufferedImage img = ImageIO.read(new File(fullPath));
             return new Image(img);
