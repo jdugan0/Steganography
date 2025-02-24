@@ -2,8 +2,6 @@ package filereader;
 
 import java.awt.image.BufferedImage;
 
-import processors.Complex;
-
 public class Image {
     public final int[][] r;
     public final int[][] g;
@@ -49,31 +47,6 @@ public class Image {
             }
         }
         return image;
-    }
-
-    public static Image displayFourier(Complex[][] freqData) {
-        int rows = freqData.length;
-        int cols = freqData[0].length;
-        int[][] grayscale = new int[rows][cols];
-        double maxMag = 0.0;
-        for (int r = 0; r < rows; r++) {
-            for (int c = 0; c < cols; c++) {
-                double mag = freqData[r][c].magnitude();
-                if (mag > maxMag) {
-                    maxMag = mag;
-                }
-            }
-        }
-        for (int r = 0; r < rows; r++) {
-            for (int c = 0; c < cols; c++) {
-                double mag = freqData[r][c].magnitude();
-                double val = Math.log1p(mag) / Math.log1p(maxMag);
-                int intensity = (int) Math.round(val * 255);
-                int color = (intensity << 16) | (intensity << 8) | intensity;
-                grayscale[r][c] = color;
-            }
-        }
-        return new Image(grayscale, grayscale, grayscale);
     }
 
 }
