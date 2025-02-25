@@ -2,12 +2,22 @@ package processors;
 
 import filereader.Image;
 
-public class FourierProcessor {
-    public static Image encode(Image source, Image encode) {
-        return source;
+public class FourierProcessor implements ImageProcessor {
+    private static FourierProcessor instance = new FourierProcessor();
+
+    private FourierProcessor() { instance = this; }
+
+    public FourierProcessor instance() {
+        return instance;
     }
 
-    public static Image decode(Image decode) {
+    @Override
+    public Image encode(Image source, Image encode) {
+        return source;
+    }
+    
+    @Override
+    public Image decode(Image decode) {
         return decode;
     }
 }

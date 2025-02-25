@@ -35,11 +35,11 @@ public class EncodeMonitor implements Runnable {
       Optional<WatchKey> key = Optional.ofNullable(watchService.poll());
       if (key.isPresent() && key.get().pollEvents().size() >= 1) {
         try {
-            Stream<Path> files = Files.list(encode);
-            
+          Stream<Path> files = Files.list(encode);
+          // BitNoiseProcessor.encode(files.findFirst());
         } catch (IOException e) {
-            System.out.println("i/o exception");
-            e.printStackTrace();
+          System.out.println("i/o exception");
+          e.printStackTrace();
         }
       };
     } catch (ClosedWatchServiceException e) {
