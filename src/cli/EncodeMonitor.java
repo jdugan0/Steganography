@@ -6,22 +6,28 @@ import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardWatchEventKinds;
+import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import processors.BitNoiseProcessor;
+
 public class EncodeMonitor implements Runnable {
   private Path encode;
+  private Path source;
   private FileSystem fileSystem;
   private WatchService watchService;
 
-  public EncodeMonitor(Path encode) throws IOException, Exception {
+  public EncodeMonitor(Path encode, Path source) throws IOException, Exception {
     this.encode = encode;
+    this.source = source;
     this.fileSystem = encode.getFileSystem();
     try {
       this.watchService = fileSystem.newWatchService();
       encode.register(watchService, StandardWatchEventKinds.ENTRY_CREATE);
+      source.register(watchService, StandardWatchEventKinds.ENTRY_CREATE);
     } catch (IOException e) {
       throw e;
     } catch (Exception e) {
@@ -33,15 +39,22 @@ public class EncodeMonitor implements Runnable {
   public void run() {
     try {
       Optional<WatchKey> key = Optional.ofNullable(watchService.poll());
-      if (key.isPresent() && key.get().pollEvents().size() >= 1) {
+      // we've seen at least one creation in a directory, so check both for image combination
+      if (key.isPresent()) {
         try {
-          Stream<Path> files = Files.list(encode);
-          // BitNoiseProcessor.encode(files.findFirst());
+          // check we have an encode and a source
+          Stream<Path> encodePaths = Files.list(encode);
+          Stream<Path> sourcePaths = Files.list(source);
+          if (encodePaths.findAny().isPresent() && sourcePaths.findAny().isPresent()) { // if we have images
+            
+          }
+          encodePaths.close();
+          sourcePaths.close();
         } catch (IOException e) {
           System.out.println("i/o exception");
           e.printStackTrace();
         }
-      };
+      }
     } catch (ClosedWatchServiceException e) {
       try {
         this.watchService = fileSystem.newWatchService();

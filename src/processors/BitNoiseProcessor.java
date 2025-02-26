@@ -5,7 +5,9 @@ import filereader.Image;
 public class BitNoiseProcessor implements ImageProcessor {
   private static BitNoiseProcessor instance = new BitNoiseProcessor();  
   
-  private BitNoiseProcessor() { instance = this; }  
+  private BitNoiseProcessor() { instance = this; }
+
+  public static BitNoiseProcessor instance() { return instance; }
   
   @Override
   public Image encode(Image source, Image encode) {
