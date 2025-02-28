@@ -1,10 +1,12 @@
 package cli;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.ClosedWatchServiceException;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
@@ -12,6 +14,8 @@ import java.nio.file.WatchService;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import filereader.FileReader;
+import filereader.FileReader.ImageType;
 import processors.BitNoiseProcessor;
 
 public class EncodeMonitor implements Runnable {
@@ -43,13 +47,15 @@ public class EncodeMonitor implements Runnable {
       if (key.isPresent()) {
         try {
           // check we have an encode and a source
-          Stream<Path> encodePaths = Files.list(encode);
-          Stream<Path> sourcePaths = Files.list(source);
-          if (encodePaths.findAny().isPresent() && sourcePaths.findAny().isPresent()) { // if we have images
-            
+          Optional<Path> encodePath = Files.list(encode).findFirst();
+          Optional<Path> sourcePath = Files.list(source).findFirst();
+          if (encodePath.isPresent() && sourcePath.isPresent()) { // if we have images
+            String[] encodePathString = encodePath.toString().split(File.separator);
+            BitNoiseProcessor.instance().encode(
+              FileReader.readImage(ImageType.Encode,
+                encodePathString[encodePathString.length - 1]),
+              FileReader.readImage(ImageType.Encode, null));
           }
-          encodePaths.close();
-          sourcePaths.close();
         } catch (IOException e) {
           System.out.println("i/o exception");
           e.printStackTrace();

@@ -8,7 +8,9 @@ public class FileReader {
     public enum ImageType {
         Encode,
         Decode,
-        Storage
+        Storage,
+        Source,
+        Output
     }
 
     public static Image readImage(ImageType type, String relativeFilePath) {
