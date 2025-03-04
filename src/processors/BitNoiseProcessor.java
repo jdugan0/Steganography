@@ -32,14 +32,14 @@ public class BitNoiseProcessor implements ImageProcessor {
         int rTruncated = source.r[y][x] >> noiseThreshold;
         int gTruncated = source.g[y][x] >> noiseThreshold;
         int bTruncated = source.b[y][x] >> noiseThreshold;
-        // take two most significant bits of encode
+        // take most significant bits of encode
         int rSignificant = encode.r[y][x] >> (8 - noiseThreshold);
         int gSignificant = encode.g[y][x] >> (8 - noiseThreshold);
         int bSignificant = encode.b[y][x] >> (8 - noiseThreshold);
         // concatenate bits
-        int rEncoded = rTruncated * 4 + rSignificant;
-        int gEncoded = gTruncated * 4 + gSignificant;
-        int bEncoded = bTruncated * 4 + bSignificant;
+        int rEncoded = rTruncated * (int)(Math.pow(2, noiseThreshold)) + rSignificant;
+        int gEncoded = gTruncated * (int)(Math.pow(2, noiseThreshold)) + gSignificant;
+        int bEncoded = bTruncated * (int)(Math.pow(2, noiseThreshold)) + bSignificant;
         // store new pixel
         r[y][x] = rEncoded;
         g[y][x] = gEncoded;
@@ -57,6 +57,8 @@ public class BitNoiseProcessor implements ImageProcessor {
   }
 
   public Image decode(Image decode, int noiseThreshold) {
+    // cap noise threshold
+    noiseThreshold = Math.max(Math.min(noiseThreshold, 5), 1);
     // storage for decoded pixels
     int[][] r = new int[decode.r.length][decode.r[0].length];
     int[][] g = new int[decode.g.length][decode.g[0].length];
@@ -65,9 +67,9 @@ public class BitNoiseProcessor implements ImageProcessor {
     for (int y = 0; y < decode.r.length; y++) {
       for (int x = 0; x < decode.r[0].length; x++) {
         // take end bits of decode
-        int rDecoded = decode.r[y][x] << (8 - noiseThreshold);
-        int gDecoded = decode.g[y][x] << (8 - noiseThreshold);
-        int bDecoded = decode.b[y][x] << (8 - noiseThreshold);
+        int rDecoded = decode.r[y][x] << (8 - noiseThreshold) & 255;
+        int gDecoded = decode.g[y][x] << (8 - noiseThreshold) & 255;
+        int bDecoded = decode.b[y][x] << (8 - noiseThreshold) & 255;
         // store new pixel
         r[y][x] = rDecoded;
         g[y][x] = gDecoded;
