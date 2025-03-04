@@ -13,15 +13,15 @@ public class Main {
     public static void main(String... args) {
         // testing bit noise processor
         Image source = FileReader.readImage(ImageType.Source, "source.png");
-        Image encode = FileReader.readImage(ImageType.Source, "encode.png");
+        Image encode = FileReader.readImage(ImageType.Encode, "encode.png");
         try {
             Path output = Files.createFile(Paths.get(
                 new File("").getAbsolutePath()
                 + File.separator + "Images" + File.separator + "Output/output.png"));
-            Image outputImage = BitNoiseProcessor.instance().encode(source, encode);
+            Image outputImage = BitNoiseProcessor.instance().encode(source, encode, 3);
             FileReader.writeImage(Image.toBufferedImage(outputImage), ImageType.Output, "output.png");
         } catch (IOException e) {
-            System.out.println("Failure");
+            e.printStackTrace();
         }
     }
 }
