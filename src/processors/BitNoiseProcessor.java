@@ -53,6 +53,29 @@ public class BitNoiseProcessor implements ImageProcessor {
 
   @Override
   public Image decode(Image decode) {
-    return decode;
+    return decode(decode, 2);
+  }
+
+  public Image decode(Image decode, int noiseThreshold) {
+    // storage for decoded pixels
+    int[][] r = new int[decode.r.length][decode.r[0].length];
+    int[][] g = new int[decode.g.length][decode.g[0].length];
+    int[][] b = new int[decode.b.length][decode.b[0].length];
+    // iterate over pixels
+    for (int y = 0; y < decode.r.length; y++) {
+      for (int x = 0; x < decode.r[0].length; x++) {
+        // take end bits of decode
+        int rDecoded = decode.r[y][x] << (8 - noiseThreshold);
+        int gDecoded = decode.g[y][x] << (8 - noiseThreshold);
+        int bDecoded = decode.b[y][x] << (8 - noiseThreshold);
+        // store new pixel
+        r[y][x] = rDecoded;
+        g[y][x] = gDecoded;
+        b[y][x] = bDecoded;
+      }
+    }
+    // create output
+    Image decoded = new Image(r, g, b);
+    return decoded;
   }
 }
