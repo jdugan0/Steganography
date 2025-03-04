@@ -14,18 +14,18 @@ public class Main {
         // testing bit noise processor
         Image source = FileReader.readImage(ImageType.Source, "source.png");
         Image encode = FileReader.readImage(ImageType.Encode, "encode.png");
-        Image decode = FileReader.readImage(ImageType.Decode, "decode.png");
+        int noiseThreshold = 4;
         try {
-            /* Path output = Files.createFile(Paths.get(
+            Path decode = Files.createFile(Paths.get(
                 new File("").getAbsolutePath()
-                + File.separator + "Images" + File.separator + "Output/output.png"));
-            Image outputImage = BitNoiseProcessor.instance().encode(source, encode, 4);
-            FileReader.writeImage(Image.toBufferedImage(outputImage), ImageType.Output, "output.png"); */
+                + File.separator + "Images" + File.separator + "Decode/decode.png"));
+            Image outputImage = BitNoiseProcessor.instance().encode(source, encode, noiseThreshold);
+            FileReader.writeImage(Image.toBufferedImage(outputImage), ImageType.Decode, "decode.png");
 
             Path output = Files.createFile(Paths.get(
                 new File("").getAbsolutePath()
                 + File.separator + "Images" + File.separator + "Output/output.png"));
-            Image decodedImage = BitNoiseProcessor.instance().decode(decode, 4);
+            Image decodedImage = BitNoiseProcessor.instance().decode(outputImage, noiseThreshold);
             FileReader.writeImage(Image.toBufferedImage(decodedImage), ImageType.Output, "output.png");
         } catch (IOException e) {
             e.printStackTrace();
