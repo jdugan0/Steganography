@@ -91,7 +91,7 @@ public class Image {
         int[][] newI = new int[image.length][image[0].length];
         for (int x = 0; x < image.length; x++) {
             for (int y = 0; y < image[0].length; y++) {
-                int c = (int) Math.round(Math.max(0, Math.min(255, image[x][y].real)));
+                int c = (int) Math.round(Math.max(0, Math.min(255, image[x][y].magnitude())));
                 newI[x][y] = c;
             }
         }

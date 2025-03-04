@@ -44,6 +44,16 @@ public class FourierProcessor {
                         .divide(factor);
                 sourceFFTB[i + width / 4 - width / scale / 2][j + height / 4 - height / scale / 2] = fftBScaled[i][j]
                         .divide(factor);
+
+                sourceFFTR[i + 3 * width / 4 - width / scale / 2][j + 3 * height / 4
+                        - height / scale / 2] = fftRScaled[i][j]
+                                .divide(factor).conjugate();
+                sourceFFTG[i + 3 * width / 4 - width / scale / 2][j + 3 * height / 4
+                        - height / scale / 2] = fftGScaled[i][j]
+                                .divide(factor).conjugate();
+                sourceFFTB[i + 3 * width / 4 - width / scale / 2][j + 3 * height / 4
+                        - height / scale / 2] = fftBScaled[i][j]
+                                .divide(factor).conjugate();
             }
         }
 
@@ -90,35 +100,9 @@ public class FourierProcessor {
                 Image.fftToImage(fftBScaled));
         FileReader.writeImage(Image.toBufferedImage(debug1), ImageType.Debug, "hiddenFFT.png");
 
-        // 5) Create full-size frequency arrays to hold the upsampled data.
-        // Initially set them all to zero. We'll put our scaled frequencies into their
-        // positions
-        // at multiples of 'scale'. Everything else remains zero.
-        Complex[][] recoveredFFTR = new Complex[width][height];
-        Complex[][] recoveredFFTG = new Complex[width][height];
-        Complex[][] recoveredFFTB = new Complex[width][height];
-
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < height; j++) {
-                recoveredFFTR[i][j] = new Complex(0, 0);
-                recoveredFFTG[i][j] = new Complex(0, 0);
-                recoveredFFTB[i][j] = new Complex(0, 0);
-            }
-        }
-
-        // 6) Fill in the frequency coefficients at every 'scale'-th index.
-        for (int i = 0; i < width; i += scale) {
-            for (int j = 0; j < height; j += scale) {
-                recoveredFFTR[i][j] = fftRScaled[i / scale][j / scale];
-                recoveredFFTG[i][j] = fftGScaled[i / scale][j / scale];
-                recoveredFFTB[i][j] = fftBScaled[i / scale][j / scale];
-            }
-        }
-
-        // 7) Inverse FFT to get back the hidden image.
-        Image redNew = Image.complexToImage(applyIFFT(recoveredFFTR));
-        Image greenNew = Image.complexToImage(applyIFFT(recoveredFFTG));
-        Image blueNew = Image.complexToImage(applyIFFT(recoveredFFTB));
+        Image redNew = Image.complexToImage(applyIFFT(fftRScaled));
+        Image greenNew = Image.complexToImage(applyIFFT(fftGScaled));
+        Image blueNew = Image.complexToImage(applyIFFT(fftBScaled));
 
         return new Image(redNew, greenNew, blueNew);
     }

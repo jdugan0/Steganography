@@ -20,4 +20,8 @@ public class Complex {
     public Complex times(double x) {
         return new Complex(real * x, imag * x);
     }
+
+    public Complex conjugate() {
+        return new Complex(real, -imag);
+    }
 }
