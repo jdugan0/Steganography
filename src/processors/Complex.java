@@ -9,7 +9,19 @@ public class Complex {
         this.imag = imag;
     }
 
-    public double magnitude(){
+    public double magnitude() {
         return Math.sqrt(real * real + imag * imag);
+    }
+
+    public Complex divide(double d) {
+        return new Complex(real / d, imag / d);
+    }
+
+    public Complex times(double x) {
+        return new Complex(real * x, imag * x);
+    }
+
+    public Complex conjugate() {
+        return new Complex(real, -imag);
     }
 }

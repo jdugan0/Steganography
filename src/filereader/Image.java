@@ -28,6 +28,14 @@ public class Image {
         }
     }
 
+    public Image(Image r, Image g, Image b) {
+        this.r = r.r;
+        this.g = g.g;
+        this.b = b.b;
+        this.width = r.width;
+        this.height = r.height;
+    }
+
     public Image(int r[][], int g[][], int b[][]) {
         this.r = r;
         this.g = g;
@@ -51,7 +59,7 @@ public class Image {
         return image;
     }
 
-    public static Image complexToImage(Complex[][] data) {
+    public static Image fftToImage(Complex[][] data) {
         int width = data.length;
         int height = data[0].length;
         double[][] magnitude = new double[width][height];
@@ -77,5 +85,16 @@ public class Image {
 
         // Return as grayscale image (same values in R, G, B)
         return new Image(grayscale, grayscale, grayscale);
+    }
+
+    public static Image complexToImage(Complex[][] image) {
+        int[][] newI = new int[image.length][image[0].length];
+        for (int x = 0; x < image.length; x++) {
+            for (int y = 0; y < image[0].length; y++) {
+                int c = (int) Math.round(Math.max(0, Math.min(255, image[x][y].magnitude())));
+                newI[x][y] = c;
+            }
+        }
+        return new Image(newI, newI, newI);
     }
 }

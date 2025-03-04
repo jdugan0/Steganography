@@ -10,7 +10,9 @@ public class FileReader {
         Decode,
         Storage,
         Source,
-        Output
+        Output,
+        Store,
+        Debug
     }
 
     public static Image readImage(ImageType type, String relativeFilePath) {

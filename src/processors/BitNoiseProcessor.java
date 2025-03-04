@@ -6,11 +6,11 @@ public class BitNoiseProcessor implements ImageProcessor {
   private static BitNoiseProcessor instance = new BitNoiseProcessor();
 
   private BitNoiseProcessor() {
-    instance = this;
+    BitNoiseProcessor.instance = this;
   }
 
   public static BitNoiseProcessor instance() {
-    return instance;
+    return BitNoiseProcessor.instance;
   }
 
   @Override
