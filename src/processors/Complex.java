@@ -24,4 +24,8 @@ public class Complex {
     public Complex conjugate() {
         return new Complex(real, -imag);
     }
+
+    public static Complex fromPolar(double r, double theta) {
+        return new Complex(r * Math.cos(theta), r * Math.sin(theta));
+    }
 }

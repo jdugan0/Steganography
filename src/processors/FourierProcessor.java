@@ -1,191 +1,276 @@
 package processors;
 
+import filereader.Image;
 import org.jtransforms.fft.DoubleFFT_2D;
 
-import filereader.FileReader;
-import filereader.Image;
-import filereader.FileReader.ImageType;
-
+/**
+ * Improved frequency-domain steganography.
+ *
+ * For each color channel the secret is embedded only in the high-frequency region.
+ * In that region the store FFT is blended with the secret FFT:
+ *
+ *      storeFFT = (1 - factor) * storeFFT + factor * secretFFT.
+ *
+ * During decode the secret is recovered (in the high-frequency region) by:
+ *
+ *      secretFFT = (encodedFFT - (1 - factor) * origStoreFFT) / factor.
+ *
+ * Low-frequency coefficients are left untouched to preserve image quality.
+ */
 public class FourierProcessor {
-    public static Image encode(Image source, Image encode, int scale, double factor) {
-        Complex[][] sourceFFTR = applyFFT(source.r);
-        Complex[][] sourceFFTG = applyFFT(source.g);
-        Complex[][] sourceFFTB = applyFFT(source.b);
 
-        Image debug1 = new Image(Image.fftToImage(sourceFFTR), Image.fftToImage(sourceFFTG),
-                Image.fftToImage(sourceFFTB));
+    // We'll store the FFT of the original "store" image so we can subtract it out in decode.
+    private static double[][] storeRFFT;
+    private static double[][] storeGFFT;
+    private static double[][] storeBFFT;
 
-        FileReader.writeImage(Image.toBufferedImage(debug1), ImageType.Debug, "sourceFFT.png");
+    // Keep track of the dimensions of the store image
+    private static int storeWidth;
+    private static int storeHeight;
 
-        Complex[][] encodeFFTR = applyFFT(encode.r);
-        Complex[][] encodeFFTG = applyFFT(encode.g);
-        Complex[][] encodeFFTB = applyFFT(encode.b);
-
-        int width = source.width;
-        int height = source.height;
-
-        Complex[][] fftGScaled = new Complex[width / scale][height / scale];
-        Complex[][] fftRScaled = new Complex[width / scale][height / scale];
-        Complex[][] fftBScaled = new Complex[width / scale][height / scale];
-
-        for (int i = 0; i < width; i += scale) {
-            for (int j = 0; j < height; j += scale) {
-                fftRScaled[i / scale][j / scale] = encodeFFTR[i][j];
-                fftGScaled[i / scale][j / scale] = encodeFFTG[i][j];
-                fftBScaled[i / scale][j / scale] = encodeFFTB[i][j];
-            }
+    /**
+     * Encodes the secret image into the store image using JTransforms 2D FFT.
+     * The embedding is performed only in the high-frequency region (based on a radial threshold)
+     * for each color channel.
+     *
+     * @param store  The cover (store) image.
+     * @param secret The secret image (must be the same dimensions as the store).
+     * @param factor The embedding strength (0 to 1). At 0 no secret is embedded; at 1 the secret fully replaces the store in the high frequencies.
+     * @return       The encoded (stego) image.
+     */
+    public static Image encode(Image store, Image secret, double factor) {
+        // Save original store dimensions
+        storeWidth  = store.width;
+        storeHeight = store.height;
+        
+        if (store.width != secret.width || store.height != secret.height) {
+            throw new IllegalArgumentException("Store and secret images must have the same dimensions.");
         }
 
-        for (int i = 0; i < width / scale; i++) {
-            for (int j = 0; j < height / scale; j++) {
-                sourceFFTR[i + width / 4 - width / scale / 2][j + height / 4 - height / scale / 2] = fftRScaled[i][j]
-                        .divide(factor);
-                sourceFFTG[i + width / 4 - width / scale / 2][j + height / 4 - height / scale / 2] = fftGScaled[i][j]
-                        .divide(factor);
-                sourceFFTB[i + width / 4 - width / scale / 2][j + height / 4 - height / scale / 2] = fftBScaled[i][j]
-                        .divide(factor);
+        // Prepare the doubleFFT for these dimensions
+        DoubleFFT_2D fft2D = new DoubleFFT_2D(storeHeight, storeWidth);
 
-                sourceFFTR[i + 3 * width / 4 - width / scale / 2][j + 3 * height / 4
-                        - height / scale / 2] = fftRScaled[i][j]
-                                .divide(factor).conjugate();
-                sourceFFTG[i + 3 * width / 4 - width / scale / 2][j + 3 * height / 4
-                        - height / scale / 2] = fftGScaled[i][j]
-                                .divide(factor).conjugate();
-                sourceFFTB[i + 3 * width / 4 - width / scale / 2][j + 3 * height / 4
-                        - height / scale / 2] = fftBScaled[i][j]
-                                .divide(factor).conjugate();
-            }
-        }
+        // --- 1) Forward FFT on the store image for each channel ---
+        // Convert each channel to interleaved double[][] (shape: [height][2*width])
+        double[][] storeR = toDoubleArray(store.r);
+        double[][] storeG = toDoubleArray(store.g);
+        double[][] storeB = toDoubleArray(store.b);
 
-        Image debug2 = new Image(Image.fftToImage(sourceFFTR), Image.fftToImage(sourceFFTG),
-                Image.fftToImage(sourceFFTB));
+        // Forward FFT (in-place)
+        fft2D.complexForward(storeR);
+        fft2D.complexForward(storeG);
+        fft2D.complexForward(storeB);
 
-        FileReader.writeImage(Image.toBufferedImage(debug2), ImageType.Debug, "encodedFFT.png");
+        // Save deep copies for use in decode
+        storeRFFT = deepCopy(storeR);
+        storeGFFT = deepCopy(storeG);
+        storeBFFT = deepCopy(storeB);
 
-        Image redNew = Image.complexToImage(applyIFFT(sourceFFTR));
-        Image greenNew = Image.complexToImage(applyIFFT(sourceFFTG));
-        Image blueNew = Image.complexToImage(applyIFFT(sourceFFTB));
+        // --- 2) Forward FFT on the secret image for each channel ---
+        double[][] secretR = toDoubleArray(secret.r);
+        double[][] secretG = toDoubleArray(secret.g);
+        double[][] secretB = toDoubleArray(secret.b);
 
-        return new Image(redNew, greenNew, blueNew);
+        fft2D.complexForward(secretR);
+        fft2D.complexForward(secretG);
+        fft2D.complexForward(secretB);
+
+        // --- 3) Embed: blend storeFFT with secretFFT in high-frequency regions only ---
+        blendFFT(storeR, secretR, factor);
+        blendFFT(storeG, secretG, factor);
+        blendFFT(storeB, secretB, factor);
+
+        // --- 4) Inverse FFT to get the encoded image ---
+        fft2D.complexInverse(storeR, true);
+        fft2D.complexInverse(storeG, true);
+        fft2D.complexInverse(storeB, true);
+
+        // Convert back to int[][] and clamp to [0,255]
+        int[][] encodedR = toIntArray(storeR);
+        int[][] encodedG = toIntArray(storeG);
+        int[][] encodedB = toIntArray(storeB);
+
+        clampToByteRange(encodedR);
+        clampToByteRange(encodedG);
+        clampToByteRange(encodedB);
+
+        // Return the final encoded image
+        return new Image(encodedR, encodedG, encodedB);
     }
 
-    public static Image decode(Image encoded, int scale, double factor) {
-
-        int width = encoded.width;
-        int height = encoded.height;
-
-        Complex[][] decodeFFTR = applyFFT(encoded.r);
-        Complex[][] decodeFFTG = applyFFT(encoded.g);
-        Complex[][] decodeFFTB = applyFFT(encoded.b);
-
-        Image debug2 = new Image(Image.fftToImage(decodeFFTR), Image.fftToImage(decodeFFTG),
-                Image.fftToImage(decodeFFTB));
-        FileReader.writeImage(Image.toBufferedImage(debug2), ImageType.Debug, "decodedFFT.png");
-
-        Complex[][] fftRScaled = new Complex[width / scale][height / scale];
-        Complex[][] fftGScaled = new Complex[width / scale][height / scale];
-        Complex[][] fftBScaled = new Complex[width / scale][height / scale];
-
-        int offsetX = width / 4 - (width / scale) / 2;
-        int offsetY = height / 4 - (height / scale) / 2;
-        for (int i = 0; i < width / scale; i++) {
-            for (int j = 0; j < height / scale; j++) {
-                fftRScaled[i][j] = decodeFFTR[i + offsetX][j + offsetY].times(factor);
-                fftGScaled[i][j] = decodeFFTG[i + offsetX][j + offsetY].times(factor);
-                fftBScaled[i][j] = decodeFFTB[i + offsetX][j + offsetY].times(factor);
-            }
+    /**
+     * Decodes the secret image from the encoded image by subtracting out the stored FFT
+     * (saved during encode) and then reversing the blending in the high-frequency regions.
+     *
+     * @param encoded The encoded (stego) image.
+     * @param factor  The embedding strength used in encode.
+     * @return        The recovered secret image.
+     */
+    public static Image decode(Image encoded, double factor) {
+        // Ensure dimensions match
+        if (encoded.width != storeWidth || encoded.height != storeHeight) {
+            throw new RuntimeException("Encoded image dimensions differ from store image dimensions!");
         }
 
-        Image debug1 = new Image(Image.fftToImage(fftRScaled), Image.fftToImage(fftGScaled),
-                Image.fftToImage(fftBScaled));
-        FileReader.writeImage(Image.toBufferedImage(debug1), ImageType.Debug, "hiddenFFT.png");
+        DoubleFFT_2D fft2D = new DoubleFFT_2D(storeHeight, storeWidth);
 
-        Image redNew = Image.complexToImage(applyIFFT(fftRScaled));
-        Image greenNew = Image.complexToImage(applyIFFT(fftGScaled));
-        Image blueNew = Image.complexToImage(applyIFFT(fftBScaled));
+        // --- 1) Forward FFT of the encoded image ---
+        double[][] encR = toDoubleArray(encoded.r);
+        double[][] encG = toDoubleArray(encoded.g);
+        double[][] encB = toDoubleArray(encoded.b);
 
-        return new Image(redNew, greenNew, blueNew);
+        fft2D.complexForward(encR);
+        fft2D.complexForward(encG);
+        fft2D.complexForward(encB);
+
+        // --- 2) Extract secret FFT coefficients in the high-frequency region ---
+        extractFFT(encR, storeRFFT, factor);
+        extractFFT(encG, storeGFFT, factor);
+        extractFFT(encB, storeBFFT, factor);
+
+        // --- 3) Inverse FFT to recover secret image channels ---
+        fft2D.complexInverse(encR, true);
+        fft2D.complexInverse(encG, true);
+        fft2D.complexInverse(encB, true);
+
+        // Convert to int[][] and clamp
+        int[][] secretR = toIntArray(encR);
+        int[][] secretG = toIntArray(encG);
+        int[][] secretB = toIntArray(encB);
+
+        clampToByteRange(secretR);
+        clampToByteRange(secretG);
+        clampToByteRange(secretB);
+
+        return new Image(secretR, secretG, secretB);
     }
 
-    public static Complex[][] applyFFT(int[][] channel) {
-        int width = channel.length;
-        int height = channel[0].length;
+    // -------------------------------------------------------------------------
+    //                         Helper Methods
+    // -------------------------------------------------------------------------
 
-        // 1) Prepare double[][] array of size [width][2*height]
-        double[][] data = new double[width][2 * height];
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < height; j++) {
-                data[i][2 * j] = channel[i][j]; // real
-                data[i][2 * j + 1] = 0.0; // imaginary
+    /**
+     * Converts an int[][] (channel data) to a double[][] with interleaved complex format.
+     * The resulting array has shape [height][2*width]: real parts at index 2*x, imaginary parts at 2*x+1.
+     */
+    private static double[][] toDoubleArray(int[][] channel) {
+        int w = channel.length;
+        int h = channel[0].length;
+        // We create an array with shape [h][2*w] (treating x as column, y as row)
+        double[][] result = new double[h][2 * w];
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                double val = channel[x][y];
+                result[y][2 * x]     = val;  // real
+                result[y][2 * x + 1] = 0.0;  // imaginary
             }
         }
-
-        // 2) Perform the FFT
-        DoubleFFT_2D fft = new DoubleFFT_2D(width, height);
-        fft.complexForward(data);
-
-        // 3) Convert to Complex[][]
-        Complex[][] spectrum = new Complex[width][height];
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < height; j++) {
-                double re = data[i][2 * j];
-                double im = data[i][2 * j + 1];
-                spectrum[i][j] = new Complex(re, im);
-            }
-        }
-
-        // 4) Shift the spectrum
-        Complex[][] shifted = fftShift(spectrum);
-
-        return shifted;
+        return result;
     }
 
-    public static Complex[][] fftShift(Complex[][] spectrum) {
-        int w = spectrum.length;
-        int h = spectrum[0].length;
-
-        Complex[][] shifted = new Complex[w][h];
-
-        // For each row, we shift up or down by w/2
-        // For each column, we shift left or right by h/2
-        for (int i = 0; i < w; i++) {
-            for (int j = 0; j < h; j++) {
-                // Wrap index (i + w/2) mod w
-                int newI = (i + w / 2) % w;
-                // Wrap index (j + h/2) mod h
-                int newJ = (j + h / 2) % h;
-
-                shifted[newI][newJ] = spectrum[i][j];
+    /**
+     * Converts the interleaved double[][] (from JTransforms) back to an int[][].
+     * Only the real part is used.
+     */
+    private static int[][] toIntArray(double[][] complexData) {
+        int h = complexData.length;
+        int w = complexData[0].length / 2;
+        int[][] result = new int[w][h]; // [width][height]
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                double realVal = complexData[y][2 * x];
+                int intVal = (int) Math.round(realVal);
+                result[x][y] = intVal;
             }
         }
-        return shifted;
+        return result;
     }
 
-    public static Complex[][] applyIFFT(Complex[][] spectrum) {
-        Complex[][] shifted = fftShift(spectrum);
-        int width = spectrum.length;
-        int height = spectrum[0].length;
+    /**
+     * Blends the secret FFT into the store FFT for frequencies in the high-frequency region.
+     * For a given frequency coefficient, if its distance from the center exceeds a threshold,
+     * we replace the store coefficient with:
+     *      (1 - factor)*store + factor*secret.
+     *
+     * This is applied in-place.
+     */
+    private static void blendFFT(double[][] storeFFT, double[][] secretFFT, double factor) {
+        int h = storeFFT.length;
+        int width = storeFFT[0].length / 2; // number of complex numbers per row
+        double centerX = width / 2.0;
+        double centerY = h / 2.0;
+        double maxDist = Math.sqrt(centerX * centerX + centerY * centerY);
+        double threshold = 0.5; // embed only if distance > 50% of max distance (i.e. high frequencies)
 
-        // 1) Prepare double[][] array of size [width][2*height]
-        double[][] data = new double[width][2 * height];
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < height; j++) {
-                data[i][2 * j] = shifted[i][j].real;
-                data[i][2 * j + 1] = shifted[i][j].imag;
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < width; x++) {
+                double dx = x - centerX;
+                double dy = y - centerY;
+                double dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > threshold * maxDist) {
+                    int idx = 2 * x;
+                    // Blend the real and imaginary parts
+                    storeFFT[y][idx]     = (1 - factor) * storeFFT[y][idx]     + factor * secretFFT[y][idx];
+                    storeFFT[y][idx + 1] = (1 - factor) * storeFFT[y][idx + 1] + factor * secretFFT[y][idx + 1];
+                }
             }
         }
+    }
 
-        // 2) Perform the IFFT
-        DoubleFFT_2D ifft = new DoubleFFT_2D(width, height);
-        ifft.complexInverse(data, true);
+    /**
+     * Extracts the secret FFT from the encoded FFT by reversing the blending in the high-frequency region.
+     * For coefficients in the high-frequency region, compute:
+     *      secret = (encoded - (1 - factor) * origStore) / factor.
+     *
+     * Outside the embedding region, set the secret coefficient to zero.
+     * This is done in-place on encodedFFT.
+     */
+    private static void extractFFT(double[][] encodedFFT, double[][] origStoreFFT, double factor) {
+        int h = encodedFFT.length;
+        int width = encodedFFT[0].length / 2;
+        double centerX = width / 2.0;
+        double centerY = h / 2.0;
+        double maxDist = Math.sqrt(centerX * centerX + centerY * centerY);
+        double threshold = 0.5;
 
-        Complex[][] channel = new Complex[width][height];
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < height; j++) {
-                channel[i][j] = new Complex(data[i][j * 2], data[i][j * 2 + 1]);
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < width; x++) {
+                int idx = 2 * x;
+                double dx = x - centerX;
+                double dy = y - centerY;
+                double dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > threshold * maxDist) {
+                    encodedFFT[y][idx]     = (encodedFFT[y][idx]     - (1 - factor) * origStoreFFT[y][idx])     / factor;
+                    encodedFFT[y][idx + 1] = (encodedFFT[y][idx + 1] - (1 - factor) * origStoreFFT[y][idx + 1]) / factor;
+                } else {
+                    // Outside the embedding region, we assume no secret was embedded.
+                    encodedFFT[y][idx] = 0;
+                    encodedFFT[y][idx + 1] = 0;
+                }
             }
         }
+    }
 
-        return channel;
+    /**
+     * Clamps the values of a 2D int array into the range [0, 255].
+     */
+    private static void clampToByteRange(int[][] arr) {
+        for (int x = 0; x < arr.length; x++) {
+            for (int y = 0; y < arr[x].length; y++) {
+                if (arr[x][y] < 0)   arr[x][y] = 0;
+                if (arr[x][y] > 255) arr[x][y] = 255;
+            }
+        }
+    }
+
+    /**
+     * Makes a deep copy of a 2D double array.
+     */
+    private static double[][] deepCopy(double[][] original) {
+        double[][] copy = new double[original.length][];
+        for (int i = 0; i < original.length; i++) {
+            copy[i] = original[i].clone();
+        }
+        return copy;
     }
 }
