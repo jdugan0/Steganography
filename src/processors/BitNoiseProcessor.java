@@ -15,7 +15,7 @@ public class BitNoiseProcessor implements ImageProcessor {
 
   @Override
   public Image encode(Image source, Image encode) {
-    return encode(source, encode, 2);
+    return encode(source, encode, 4);
   }
 
   public Image encode(Image source, Image encode, int noiseThreshold) {
@@ -37,9 +37,9 @@ public class BitNoiseProcessor implements ImageProcessor {
         int gSignificant = encode.g[y][x] >> (8 - noiseThreshold);
         int bSignificant = encode.b[y][x] >> (8 - noiseThreshold);
         // concatenate bits
-        int rEncoded = rTruncated * (int)(Math.pow(2, noiseThreshold)) + rSignificant;
-        int gEncoded = gTruncated * (int)(Math.pow(2, noiseThreshold)) + gSignificant;
-        int bEncoded = bTruncated * (int)(Math.pow(2, noiseThreshold)) + bSignificant;
+        int rEncoded = rTruncated * (int) (Math.pow(2, noiseThreshold)) + rSignificant;
+        int gEncoded = gTruncated * (int) (Math.pow(2, noiseThreshold)) + gSignificant;
+        int bEncoded = bTruncated * (int) (Math.pow(2, noiseThreshold)) + bSignificant;
         // store new pixel
         r[y][x] = rEncoded;
         g[y][x] = gEncoded;
@@ -53,7 +53,7 @@ public class BitNoiseProcessor implements ImageProcessor {
 
   @Override
   public Image decode(Image decode) {
-    return decode(decode, 2);
+    return decode(decode, 4);
   }
 
   public Image decode(Image decode, int noiseThreshold) {

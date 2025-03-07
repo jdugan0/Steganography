@@ -13,7 +13,7 @@ public class FourierProcessor implements ImageProcessor {
         FourierProcessor.instance = this;
     }
 
-    public FourierProcessor instance() {
+    public static FourierProcessor instance() {
         return FourierProcessor.instance;
     }
 
