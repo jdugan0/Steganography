@@ -3,7 +3,16 @@ package processors;
 import org.jtransforms.fft.DoubleFFT_2D;
 import filereader.Image;
 
-public class FourierNew {
+public class FourierNew implements ImageProcessor {
+    private static FourierNew instance = new FourierNew();
+
+    private FourierNew() {
+        FourierNew.instance = this;
+    }
+
+    public static FourierNew instance() {
+        return instance;
+    }
 
     private static double[][] toDoubleArray(int[][] channel) {
         // channel[x][y]: x goes up to channel.length, y up to channel[0].length
@@ -35,7 +44,8 @@ public class FourierNew {
         return result;
     }
 
-    public static Image encode(Image storage, Image toEncode) {
+    @Override
+    public Image encode(Image storage, Image toEncode) {
         int h = storage.height; // number of rows
         int w = storage.width; // number of columns
 
@@ -103,7 +113,8 @@ public class FourierNew {
         return new Image(newR, newG, newB);
     }
 
-    public static Image decode(Image encoded) {
+    @Override
+    public Image decode(Image encoded) {
         int h = encoded.height;
         int w = encoded.width;
 

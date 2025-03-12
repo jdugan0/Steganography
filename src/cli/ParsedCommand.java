@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Optional;
 
 import processors.BitNoiseProcessor;
-import processors.FourierProcessor;
+import processors.FourierNew;
 import processors.ImageProcessor;
 import util.ParseHelpers;
 
@@ -18,7 +18,7 @@ public class ParsedCommand {
    */
   public enum ProcessorType {
     kBitnoise(BitNoiseProcessor.instance()),
-    kFourier(FourierProcessor.instance());
+    kFourier(FourierNew.instance());
 
     /** static {@code ImageProcessor} instance associated with type */
     private ImageProcessor instance;
