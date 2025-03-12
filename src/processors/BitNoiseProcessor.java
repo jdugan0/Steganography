@@ -17,6 +17,11 @@ public class BitNoiseProcessor implements ImageProcessor {
   public Image encode(Image source, Image encode) {
     return encode(source, encode, 4);
   }
+  
+  @Override
+  public Image decode(Image decode) {
+    return decode(decode, 4);
+  }
 
   public Image encode(Image source, Image encode, int noiseThreshold) {
     // cap noise threshold to reasonable value
@@ -49,11 +54,6 @@ public class BitNoiseProcessor implements ImageProcessor {
     // create output
     Image output = new Image(r, g, b);
     return output;
-  }
-
-  @Override
-  public Image decode(Image decode) {
-    return decode(decode, 4);
   }
 
   public Image decode(Image decode, int noiseThreshold) {

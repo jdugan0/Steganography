@@ -1,7 +1,6 @@
 package cli;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Optional;
 
 import processors.BitNoiseProcessor;
@@ -9,6 +8,10 @@ import processors.FourierProcessor;
 import processors.ImageProcessor;
 import util.ParseHelpers;
 
+/**
+ * Represents a set of command parameters
+ * parsed from the user's terminal input.
+ */
 public class ParsedCommand {
   /**
    * Allowable {@code ImageProcessor} types.
@@ -17,12 +20,17 @@ public class ParsedCommand {
     kBitnoise(BitNoiseProcessor.instance()),
     kFourier(FourierProcessor.instance());
 
+    /** static {@code ImageProcessor} instance associated with type */
     private ImageProcessor instance;
 
     private ProcessorType(ImageProcessor instance) {
       this.instance = instance;
     }
 
+    /**
+     * Gets associated {@code ImageProcessor} instance.
+     * @return Instance.
+     */
     public ImageProcessor toInstance() {
       return instance;
     }
