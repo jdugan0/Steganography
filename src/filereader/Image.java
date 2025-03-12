@@ -2,7 +2,6 @@ package filereader;
 
 import java.awt.image.BufferedImage;
 
-import processors.Complex;
 
 public class Image {
     public final int[][] r;
@@ -57,44 +56,5 @@ public class Image {
             }
         }
         return image;
-    }
-
-    public static Image fftToImage(Complex[][] data) {
-        int width = data.length;
-        int height = data[0].length;
-        double[][] magnitude = new double[width][height];
-
-        // Compute magnitude and find max value
-        double maxMagnitude = 0;
-        for (int x = 0; x < width; x++) {
-            for (int y = 0; y < height; y++) {
-                magnitude[x][y] = Math.log(1 + data[x][y].magnitude()); // Log scale
-                if (magnitude[x][y] > maxMagnitude) {
-                    maxMagnitude = magnitude[x][y]; // Track max value for normalization
-                }
-            }
-        }
-
-        // Normalize and convert to 8-bit grayscale
-        int[][] grayscale = new int[width][height];
-        for (int x = 0; x < width; x++) {
-            for (int y = 0; y < height; y++) {
-                grayscale[x][y] = (int) ((magnitude[x][y] / maxMagnitude) * 255); // Normalize to [0,255]
-            }
-        }
-
-        // Return as grayscale image (same values in R, G, B)
-        return new Image(grayscale, grayscale, grayscale);
-    }
-
-    public static Image complexToImage(Complex[][] image) {
-        int[][] newI = new int[image.length][image[0].length];
-        for (int x = 0; x < image.length; x++) {
-            for (int y = 0; y < image[0].length; y++) {
-                int c = (int) Math.round(Math.max(0, Math.min(255, image[x][y].magnitude())));
-                newI[x][y] = c;
-            }
-        }
-        return new Image(newI, newI, newI);
     }
 }
