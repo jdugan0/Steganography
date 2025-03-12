@@ -5,13 +5,14 @@ import processors.ImageProcessor;
 
 public class Main {
   public static void main(String... args) {
-    try {
-      Scanner scanner = new Scanner(System.in);
-      ImageProcessor.execute(ParsedCommand.parse(scanner.nextLine()));
-      scanner.close();
-    } catch (Exception e) {
-      e.printStackTrace();
+    Scanner scanner = new Scanner(System.in);
+    String line;
+    line = scanner.nextLine();
+    while (!line.equals("exit")) {
+      ImageProcessor.execute(ParsedCommand.parse(line));
+      line = scanner.nextLine();
     }
+    scanner.close();
 
     /* Image encoded = FourierProcessor.encode(FileReader.readImage(ImageType.Store, "store.png"),
         FileReader.readImage(ImageType.Encode, "encode.png"), 5, 4);
