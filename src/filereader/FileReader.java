@@ -45,7 +45,12 @@ public class FileReader {
 
     public static boolean writeImage(BufferedImage image, String relativeFilePath) {
         try {
-            String path = new File("").getAbsolutePath() + File.separator + relativeFilePath;
+            String path;
+            if (relativeFilePath.substring(0, 1).equals(".")) {
+                path = new File("").getAbsolutePath() + relativeFilePath.substring(1);
+            } else {
+                path = relativeFilePath;
+            }
             System.out.println("Writing image to: " + path);
             File outputFile = new File(path);
             outputFile.getParentFile().mkdirs();
