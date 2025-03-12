@@ -42,4 +42,17 @@ public class FileReader {
         }
         return false;
     }
+
+    public static boolean writeImage(BufferedImage image, String relativeFilePath) {
+        try {
+            String path = new File("").getAbsolutePath() + File.separator + relativeFilePath;
+            System.out.println("Writing image to: " + path);
+            File outputFile = new File(path);
+            outputFile.getParentFile().mkdirs();
+            return ImageIO.write(image, "png", outputFile);
+        } catch (Exception e) {
+            System.out.println("Image write failed: " + e);
+        }
+        return false;
+    }
 }

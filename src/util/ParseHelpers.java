@@ -12,4 +12,13 @@ public class ParseHelpers {
         // System.out.println(i + ", " + binary.length());
         return binary;
     }
+
+    public static int search(Object[] array, Object element) {
+        for (int i = 0; i < array.length; i++) {
+            if (array[i].equals(element)) {
+                return i;
+            }
+        }
+        return -1;
+    }
 }
