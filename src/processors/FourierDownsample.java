@@ -1,7 +1,10 @@
 package processors;
 
 import org.jtransforms.fft.DoubleFFT_2D;
+
+import filereader.FileReader;
 import filereader.Image;
+import filereader.FileReader.ImageType;
 
 public class FourierDownsample implements ImageProcessor {
     private static FourierDownsample instance = new FourierDownsample();
@@ -94,6 +97,8 @@ public class FourierDownsample implements ImageProcessor {
         fft2D.complexForward(g);
         fft2D.complexForward(b);
 
+        Image scaled = Image.scale(toEncode, w / 2, h / 2);
+
         // Replace magnitude with the pixel value from 'toEncode',
         // preserving the phase from the original 'storage' image
         for (int y = h / crop; y < h / 2; y++) {
@@ -112,9 +117,9 @@ public class FourierDownsample implements ImageProcessor {
                 double magGStorage = Math.sqrt(g[y][realIndex] * g[y][realIndex] + g[y][imagIndex] * g[y][imagIndex]);
                 double magBStorage = Math.sqrt(b[y][realIndex] * b[y][realIndex] + b[y][imagIndex] * b[y][imagIndex]);
 
-                double magR = alpha * (toEncode.r[2 * x][2 * y] * scale) + (1 - alpha) * magRStorage;
-                double magG = alpha * (toEncode.g[2 * x][2 * y] * scale) + (1 - alpha) * magGStorage;
-                double magB = alpha * (toEncode.b[2 * x][2 * y] * scale) + (1 - alpha) * magBStorage;
+                double magR = alpha * (scaled.r[x][y] * scale) + (1 - alpha) * magRStorage;
+                double magG = alpha * (scaled.g[x][y] * scale) + (1 - alpha) * magGStorage;
+                double magB = alpha * (scaled.b[x][y] * scale) + (1 - alpha) * magBStorage;
 
                 // System.out.println(magRStorage/magR);
 
@@ -207,6 +212,7 @@ public class FourierDownsample implements ImageProcessor {
             }
         }
 
-        return new Image(toIntArray(removeImaginaryComponents(newR)), toIntArray(removeImaginaryComponents(newG)), toIntArray(removeImaginaryComponents(newB)));
+        return new Image(toIntArray(removeImaginaryComponents(newR)), toIntArray(removeImaginaryComponents(newG)),
+                toIntArray(removeImaginaryComponents(newB)));
     }
 }
