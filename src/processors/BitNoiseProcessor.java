@@ -3,27 +3,75 @@ package processors;
 import filereader.Image;
 
 public class BitNoiseProcessor implements ImageProcessor {
-  private static BitNoiseProcessor instance = new BitNoiseProcessor();
+  /** static instance */
+  private static BitNoiseProcessor instance = new BitNoiseProcessor(4);
 
-  private BitNoiseProcessor() {
+  /** noise threshold for encode/decode (see constructor note) */
+  private int threshold;
+
+  /**
+   * Constructs a new {@code BitNoiseProcessor}
+   * with the specified noise threshold.
+   * @param threshold Noise threshold for image
+   * encode/decode. This number represents the
+   * number of bits in a source image that will
+   * be replaced by those of the encode image.
+   */
+  private BitNoiseProcessor(int threshold) {
     BitNoiseProcessor.instance = this;
+    this.threshold = threshold;
   }
 
+  /**
+   * Gets the static instance of this class for method calls.
+   * @return {@code BitNoiseProcessor} instance
+   */
   public static BitNoiseProcessor instance() {
     return BitNoiseProcessor.instance;
   }
 
+  /**
+   * Encodes the {@code encode} image into the data of the {@code source}
+   * image, replacing the {@link BitNoiseProcessor#getThreshold()} least significant (rightmost)
+   * bits of {@code source} with the most significant (leftmost) bits of
+   * {@code encode}. The output image will appear of lower quality than either
+   * input image.
+   * @param source {@link Image} to conceal the encoded data. The output image of this
+   * method will resemble this image.
+   * @param encode {@link Image} whose data to encode. If {@link BitNoiseProcessor#decode(Image)}
+   * is called on the output of this method, its output will resemble this image.
+   * @return new {@link Image} with the data of {@code source} and {@code encode}.
+   */
   @Override
   public Image encode(Image source, Image encode) {
-    return encode(source, encode, 4);
-  }
-  
-  @Override
-  public Image decode(Image decode) {
-    return decode(decode, 4);
+    return encode(source, encode, threshold);
   }
 
-  public Image encode(Image source, Image encode, int noiseThreshold) {
+  /**
+   * Decodes an image encoded into {@code decode} by
+   * {@link BitNoiseProcessor#encode(Image, Image)}, taking the
+   * {@link BitNoiseProcessor#getThreshold()} rightmost bits of
+   * the image as the leftmost bits of the output image. All
+   * remaining bits will be 0. Consequently, the output of this
+   * method will be of lower quality than the {@code encode}
+   * argument passed to {@link BitNoiseProcessor#encode(Image, Image)}.
+   * @param decode {@link Image} with image encoded.
+   */
+  @Override
+  public Image decode(Image decode) {
+    return decode(decode, threshold);
+  }
+
+  /**
+   * See {@link BitNoiseProcessor#encode(Image, Image)}.
+   * @param noiseThreshold Number of rightmost bits of
+   * {@code source} to replace.
+   */
+  private Image encode(Image source, Image encode, int noiseThreshold) {
+    // scale images
+    if (source.width != encode.width || source.height != encode.height) {
+      encode = Image.scale(encode, source.width, source.height);
+    }
     // cap noise threshold to reasonable value
     noiseThreshold = Math.max(Math.min(noiseThreshold, 5), 1);
     // storage for output pixels
@@ -56,7 +104,12 @@ public class BitNoiseProcessor implements ImageProcessor {
     return output;
   }
 
-  public Image decode(Image decode, int noiseThreshold) {
+  /**
+   * See {@link BitNoiseProcessor#decode(Image)}.
+   * @param noiseThreshold Number of rightmost bits
+   * to take as encoded data.
+   */
+  private Image decode(Image decode, int noiseThreshold) {
     // cap noise threshold
     noiseThreshold = Math.max(Math.min(noiseThreshold, 5), 1);
     // storage for decoded pixels
@@ -79,5 +132,22 @@ public class BitNoiseProcessor implements ImageProcessor {
     // create output
     Image decoded = new Image(r, g, b);
     return decoded;
+  }
+
+  /**
+   * Sets this processor's noise threshold.
+   * @param threshold New threshold.
+   */
+  public void setThreshold(int threshold) {
+    this.threshold = threshold;
+    System.out.println("Threshold set: " + threshold);
+  }
+
+  /**
+   * Get default noise threshold.
+   * @return Threshold.
+   */
+  public int getThreshold() {
+    return threshold;
   }
 }
