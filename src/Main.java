@@ -10,6 +10,8 @@ public class Main {
     // get input
     String line;
     line = scanner.nextLine();
+    // prompt help
+    System.out.println("Type 'help' for assistance.");
     // loop until exit
     while (!line.equals("exit")) {
       try {

@@ -47,7 +47,8 @@ public class ParsedCommand {
       "Processor can be bitnoise or fourier; operation can be encode or decode. " +
       "If you are encoding, you can optionally add \"--prepare\" to send the " +
       "encoded image to the decode folder or \"--to: \" plus a path to select a " +
-      "custom folder. \"./\" also works when doing --to:. Type 'exit' to exit.";
+      "custom folder. \"./\" also works when doing --to:. Alternatively, type 'bitnoise " +
+      "threshset: [number]' to adjust accuracy of bitnoise encoding. Type 'exit' to exit.";
 
   /** processor to execute command */
   private ProcessorType processor;
