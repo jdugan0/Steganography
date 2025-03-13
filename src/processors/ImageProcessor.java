@@ -9,6 +9,12 @@ public interface ImageProcessor {
   public abstract Image encode(Image source, Image encode);
   public abstract Image decode(Image decode);
 
+  /**
+   * Encodes or decodes an image according to the parameters
+   * in {@code command}. See {@link ParsedCommand} for details
+   * on these parameters.
+   * @param command {@link ParsedCommand} to execute.
+   */
   public static void execute(ParsedCommand command) {
     ImageProcessor processor = command.getProcessor().toInstance();
     if (command.isEncode()) {
