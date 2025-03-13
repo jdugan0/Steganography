@@ -2,7 +2,6 @@ import filereader.FileReader;
 import filereader.FileReader.ImageType;
 import filereader.Image;
 import processors.FourierDownsample;
-import processors.PhaseEncode;
 
 public class Main {
     public static void main(String[] args) {
