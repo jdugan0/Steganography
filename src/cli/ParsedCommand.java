@@ -6,7 +6,6 @@ import java.util.Optional;
 import processors.BitNoiseProcessor;
 import processors.FourierDownsample;
 import processors.ImageProcessor;
-import processors.PhaseEncode;
 import util.ParseHelpers;
 
 /**
@@ -19,8 +18,7 @@ public class ParsedCommand {
    */
   public enum ProcessorType {
     kBitnoise(BitNoiseProcessor.instance()),
-    kDownsample(FourierDownsample.instance()),
-    kPhase(PhaseEncode.instance());
+    kFourier(FourierDownsample.instance());
 
     /** static {@code ImageProcessor} instance associated with type */
     private ImageProcessor instance;
