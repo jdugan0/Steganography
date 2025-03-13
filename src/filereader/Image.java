@@ -215,4 +215,58 @@ public class Image {
 
         return new int[] { rVal, gVal, bInt };
     }
+
+    // Add this method to your Image class
+    public static Image scale(Image image, int newWidth, int newHeight) {
+        // Create new arrays for the scaled RGB channels.
+        int[][] newR = new int[newWidth][newHeight];
+        int[][] newG = new int[newWidth][newHeight];
+        int[][] newB = new int[newWidth][newHeight];
+
+        // When newWidth or newHeight is 1, avoid division by zero.
+        double scaleX = (newWidth > 1) ? (double) (image.width - 1) / (newWidth - 1) : 0;
+        double scaleY = (newHeight > 1) ? (double) (image.height - 1) / (newHeight - 1) : 0;
+
+        for (int nx = 0; nx < newWidth; nx++) {
+            // Compute the corresponding x in the source image.
+            double x = (newWidth > 1) ? nx * scaleX : 0;
+            int x1 = (int) Math.floor(x);
+            int x2 = Math.min(x1 + 1, image.width - 1);
+            double dx = x - x1;
+
+            for (int ny = 0; ny < newHeight; ny++) {
+                // Compute the corresponding y in the source image.
+                double y = (newHeight > 1) ? ny * scaleY : 0;
+                int y1 = (int) Math.floor(y);
+                int y2 = Math.min(y1 + 1, image.height - 1);
+                double dy = y - y1;
+
+                // Bilinear interpolation for red channel
+                double red = (1 - dx) * (1 - dy) * image.r[x1][y1] +
+                        dx * (1 - dy) * image.r[x2][y1] +
+                        (1 - dx) * dy * image.r[x1][y2] +
+                        dx * dy * image.r[x2][y2];
+
+                // Bilinear interpolation for green channel
+                double green = (1 - dx) * (1 - dy) * image.g[x1][y1] +
+                        dx * (1 - dy) * image.g[x2][y1] +
+                        (1 - dx) * dy * image.g[x1][y2] +
+                        dx * dy * image.g[x2][y2];
+
+                // Bilinear interpolation for blue channel
+                double blue = (1 - dx) * (1 - dy) * image.b[x1][y1] +
+                        dx * (1 - dy) * image.b[x2][y1] +
+                        (1 - dx) * dy * image.b[x1][y2] +
+                        dx * dy * image.b[x2][y2];
+
+                // Round and clamp the values to valid [0,255] range.
+                newR[nx][ny] = (int) Math.round(Math.max(0, Math.min(255, red)));
+                newG[nx][ny] = (int) Math.round(Math.max(0, Math.min(255, green)));
+                newB[nx][ny] = (int) Math.round(Math.max(0, Math.min(255, blue)));
+            }
+        }
+        // Use the existing constructor that computes Lab channels from RGB arrays.
+        return new Image(newR, newG, newB);
+    }
+
 }
