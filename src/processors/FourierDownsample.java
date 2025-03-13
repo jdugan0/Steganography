@@ -6,7 +6,7 @@ import filereader.Image;
 public class FourierDownsample {
 
     public static int crop = 32;
-    public static double alpha = 0.95;
+    public static double alpha = 1;
     public static double scale = 60;
 
     private static double[][] toDoubleArray(int[][] channel) {
