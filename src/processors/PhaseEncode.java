@@ -44,50 +44,59 @@ public class PhaseEncode {
         double[][] g = toDoubleArray(storage.g);
         double[][] b = toDoubleArray(storage.b);
 
+        double[][] rEncode = toDoubleArray(toEncode.r);
+        double[][] gEncode = toDoubleArray(toEncode.g);
+        double[][] bEncode = toDoubleArray(toEncode.b);
+
         // Perform forward FFT on each channel
         DoubleFFT_2D fft2D = new DoubleFFT_2D(h, w);
         fft2D.complexForward(r);
         fft2D.complexForward(g);
         fft2D.complexForward(b);
 
+        fft2D.complexForward(rEncode);
+        fft2D.complexForward(gEncode);
+        fft2D.complexForward(bEncode);
+
         // Replace magnitude with the pixel value from 'toEncode',
         // preserving the phase from the original 'storage' image
-        for (int y = 0; y < h / 2; y++) {
-            for (int x = 0; x < w / 2; x++) {
-                int realIndex = 2 * x;
-                int imagIndex = 2 * x + 1;
+        for (int y = h/8; y < h; y++) {
+            for (int x = w/8; x < w; x++) {
+                int realIndex = 2 * (x);
+                int imagIndex = 2 * (x) + 1;
 
                 // Current phase angles from 'storage'
                 double angleR = Math.atan2(r[y][imagIndex], r[y][realIndex]);
                 double angleG = Math.atan2(g[y][imagIndex], g[y][realIndex]);
                 double angleB = Math.atan2(b[y][imagIndex], b[y][realIndex]);
 
-                // Use the toEncode pixel magnitude
-                double magR = toEncode.r[2 * x][2 * y] * 40;
-                double magG = toEncode.g[2 * x][2 * y] * 40;
-                double magB = toEncode.b[2 * x][2 * y] * 40;
+                double angleREncode = Math.atan2(rEncode[y - h/8][imagIndex - w/4], rEncode[y - h/8][realIndex - w/4]);
+                double angleGEncode = Math.atan2(gEncode[y - h/8][imagIndex - w/4], gEncode[y - h/8][realIndex - w/4]);
+                double angleBEncode = Math.atan2(bEncode[y - h/8][imagIndex - w/4], bEncode[y - h/8][realIndex - w/4]);
 
                 double magRStorage = Math.sqrt(r[y][realIndex] * r[y][realIndex] + r[y][imagIndex] * r[y][imagIndex]);
                 double magGStorage = Math.sqrt(g[y][realIndex] * g[y][realIndex] + g[y][imagIndex] * g[y][imagIndex]);
                 double magBStorage = Math.sqrt(b[y][realIndex] * b[y][realIndex] + b[y][imagIndex] * b[y][imagIndex]);
 
-                // System.out.println(magRStorage/magR);
+                double scale = 10000;
 
-                // Rebuild real + imag using that magnitude and the original phase
-                r[y][realIndex] = magR * Math.cos(angleR);
-                r[y][imagIndex] = magR * Math.sin(angleR);
+                // System.out.println(magRStorage/(angleREncode * scale));
 
-                g[y][realIndex] = magG * Math.cos(angleG);
-                g[y][imagIndex] = magG * Math.sin(angleG);
+                
+                r[y][realIndex] = angleREncode * Math.cos(angleR) * scale;
+                r[y][imagIndex] = angleREncode * Math.sin(angleR) * scale;
 
-                b[y][realIndex] = magB * Math.cos(angleB);
-                b[y][imagIndex] = magB * Math.sin(angleB);
+                g[y][realIndex] = angleGEncode * Math.cos(angleG) * scale;
+                g[y][imagIndex] = angleGEncode * Math.sin(angleG) * scale;
+
+                b[y][realIndex] = angleBEncode * Math.cos(angleB) * scale;
+                b[y][imagIndex] = angleBEncode * Math.sin(angleB) * scale;
             }
         }
 
-        enforceConjugateSymmetry(r, h, w);
-        enforceConjugateSymmetry(g, h, w);
-        enforceConjugateSymmetry(b, h, w);
+        // enforceConjugateSymmetry(r, h, w);
+        // enforceConjugateSymmetry(g, h, w);
+        // enforceConjugateSymmetry(b, h, w);
 
         // Inverse FFT to get back to spatial domain
         fft2D.complexInverse(r, true);
@@ -102,23 +111,6 @@ public class PhaseEncode {
         return new Image(newR, newG, newB);
     }
 
-    /**
-     * Enforces Hermitian symmetry on the 2D complex array “data” of size h x (2*w).
-     * In JTransforms, data[y][2*x] is the real part and data[y][2*x+1] is the
-     * imaginary part
-     * of the frequency component at (x,y). For a real input signal the FFT output
-     * must satisfy:
-     * F(mirrorX, mirrorY) = conj(F(x,y))
-     * where mirrorX = (w - x) mod w and mirrorY = (h - y) mod h.
-     *
-     * This implementation loops over every (x,y) and, for those bins that precede
-     * their
-     * conjugate counterpart in lexicographic order, sets the mirror bin equal to
-     * the conjugate.
-     * Boundary bins that are self-symmetric (e.g. DC and Nyquist frequencies) have
-     * their
-     * imaginary parts forced to zero.
-     */
     private static void enforceConjugateSymmetry(double[][] data, int h, int w) {
         // Loop over every frequency coordinate
         for (int y = 0; y < h; y++) {
@@ -155,34 +147,45 @@ public class PhaseEncode {
         double[][] g = toDoubleArray(encoded.g);
         double[][] b = toDoubleArray(encoded.b);
 
+        double[][] rNew = new double[h][w*2];
+        double[][] gNew = new double[h][w*2];
+        double[][] bNew = new double[h][w*2];
+
         // Perform forward FFT on each channel
         DoubleFFT_2D fft2D = new DoubleFFT_2D(h, w);
         fft2D.complexForward(r);
         fft2D.complexForward(g);
         fft2D.complexForward(b);
 
-        int[][] newR = new int[w / 2 - w / 8][h / 2 - h / 8];
-        int[][] newG = new int[w / 2 - w / 8][h / 2 - h / 8];
-        int[][] newB = new int[w / 2 - w / 8][h / 2 - h / 8];
-
-        for (int y = 0; y < h / 2; y++) {
-            for (int x = 0; x < w / 2; x++) {
+        for (int y = h/8; y < h / 2; y++) {
+            for (int x = w/8; x < w / 2; x++) {
                 int realIndex = 2 * x;
                 int imagIndex = 2 * x + 1;
 
-                int magRStorage = (int) (Math
-                        .sqrt(r[y][realIndex] * r[y][realIndex] + r[y][imagIndex] * r[y][imagIndex]) / 40.0);
-                int magGStorage = (int) (Math
-                        .sqrt(g[y][realIndex] * g[y][realIndex] + g[y][imagIndex] * g[y][imagIndex]) / 40.0);
-                int magBStorage = (int) (Math
-                        .sqrt(b[y][realIndex] * b[y][realIndex] + b[y][imagIndex] * b[y][imagIndex]) / 40.0);
+                double scale = 10000;
 
-                newR[x][y] = magRStorage;
-                newG[x][y] = magGStorage;
-                newB[x][y] = magBStorage;
+                double magRStorage = (Math
+                        .sqrt(r[y][realIndex] * r[y][realIndex] + r[y][imagIndex] * r[y][imagIndex]) / scale);
+                double magGStorage = (Math
+                        .sqrt(g[y][realIndex] * g[y][realIndex] + g[y][imagIndex] * g[y][imagIndex]) / scale);
+                double magBStorage = (Math
+                        .sqrt(b[y][realIndex] * b[y][realIndex] + b[y][imagIndex] * b[y][imagIndex]) / scale);
+
+                rNew[y - h/8][realIndex - x/4] = Math.cos(magRStorage) * magRStorage * scale;
+                rNew[y - h/8][imagIndex - x/4] = Math.sin(magRStorage) * magRStorage * scale;
+
+                gNew[y - h/8][realIndex - x/4] = Math.cos(magGStorage) * magGStorage * scale;
+                gNew[y - h/8][imagIndex - x/4] = Math.sin(magGStorage) * magGStorage * scale;
+
+                bNew[y - h/8][realIndex - x/4] = Math.cos(magBStorage) * magBStorage * scale;
+                bNew[y - h/8][imagIndex - x/4] = Math.sin(magBStorage) * magBStorage * scale;
             }
         }
 
-        return new Image(newR, newG, newB);
+        fft2D.complexInverse(rNew, true);
+        fft2D.complexInverse(bNew, true);
+        fft2D.complexInverse(gNew, true);
+
+        return new Image(toIntArray(rNew), toIntArray(gNew), toIntArray(bNew));
     }
 }

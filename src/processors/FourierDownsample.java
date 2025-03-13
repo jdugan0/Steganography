@@ -5,6 +5,8 @@ import filereader.Image;
 
 public class FourierDownsample {
 
+    public static int crop = 32;
+
     private static double[][] toDoubleArray(int[][] channel) {
         // channel[x][y]: x goes up to channel.length, y up to channel[0].length
         int w = channel.length;
@@ -52,8 +54,8 @@ public class FourierDownsample {
 
         // Replace magnitude with the pixel value from 'toEncode',
         // preserving the phase from the original 'storage' image
-        for (int y = 0; y < h / 2; y++) {
-            for (int x = 0; x < w / 2; x++) {
+        for (int y = h / crop; y < h / 2; y++) {
+            for (int x = w / crop; x < w / 2; x++) {
                 int realIndex = 2 * x;
                 int imagIndex = 2 * x + 1;
 
@@ -63,9 +65,9 @@ public class FourierDownsample {
                 double angleB = Math.atan2(b[y][imagIndex], b[y][realIndex]);
 
                 // Use the toEncode pixel magnitude
-                double magR = toEncode.r[2 * x][2 * y] * 40;
-                double magG = toEncode.g[2 * x][2 * y] * 40;
-                double magB = toEncode.b[2 * x][2 * y] * 40;
+                double magR = toEncode.r[2 * x][2 * y] * 100;
+                double magG = toEncode.g[2 * x][2 * y] * 100;
+                double magB = toEncode.b[2 * x][2 * y] * 100;
 
                 double magRStorage = Math.sqrt(r[y][realIndex] * r[y][realIndex] + r[y][imagIndex] * r[y][imagIndex]);
                 double magGStorage = Math.sqrt(g[y][realIndex] * g[y][realIndex] + g[y][imagIndex] * g[y][imagIndex]);
@@ -144,25 +146,25 @@ public class FourierDownsample {
         fft2D.complexForward(g);
         fft2D.complexForward(b);
 
-        int[][] newR = new int[w / 2][h / 2];
-        int[][] newG = new int[w / 2][h / 2];
-        int[][] newB = new int[w / 2][h / 2];
+        int[][] newR = new int[w / 2 - w / crop][h / 2 - h / crop];
+        int[][] newG = new int[w / 2 - w / crop][h / 2 - h / crop];
+        int[][] newB = new int[w / 2 - w / crop][h / 2 - h / crop];
 
-        for (int y = 0; y < h / 2; y++) {
-            for (int x = 0; x < w / 2; x++) {
+        for (int y = h / crop; y < h / 2; y++) {
+            for (int x = w / crop; x < w / 2; x++) {
                 int realIndex = 2 * x;
                 int imagIndex = 2 * x + 1;
 
                 int magRStorage = (int) (Math
-                        .sqrt(r[y][realIndex] * r[y][realIndex] + r[y][imagIndex] * r[y][imagIndex]) / 40.0);
+                        .sqrt(r[y][realIndex] * r[y][realIndex] + r[y][imagIndex] * r[y][imagIndex]) / 100.0);
                 int magGStorage = (int) (Math
-                        .sqrt(g[y][realIndex] * g[y][realIndex] + g[y][imagIndex] * g[y][imagIndex]) / 40.0);
+                        .sqrt(g[y][realIndex] * g[y][realIndex] + g[y][imagIndex] * g[y][imagIndex]) / 100.0);
                 int magBStorage = (int) (Math
-                        .sqrt(b[y][realIndex] * b[y][realIndex] + b[y][imagIndex] * b[y][imagIndex]) / 40.0);
+                        .sqrt(b[y][realIndex] * b[y][realIndex] + b[y][imagIndex] * b[y][imagIndex]) / 100.0);
 
-                newR[x][y] = magRStorage;
-                newG[x][y] = magGStorage;
-                newB[x][y] = magBStorage;
+                newR[x - w / crop][y - h / crop] = magRStorage;
+                newG[x - w / crop][y - h / crop] = magGStorage;
+                newB[x - w / crop][y - h / crop] = magBStorage;
             }
         }
 
