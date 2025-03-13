@@ -6,6 +6,8 @@ import filereader.Image;
 public class FourierDownsample {
 
     public static int crop = 32;
+    public static double alpha = 0.95;
+    public static double scale = 60;
 
     private static double[][] toDoubleArray(int[][] channel) {
         // channel[x][y]: x goes up to channel.length, y up to channel[0].length
@@ -16,6 +18,22 @@ public class FourierDownsample {
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
                 // Real part at index 2*x, imaginary at 2*x+1
+                result[y][2 * x] = channel[x][y];
+                result[y][2 * x + 1] = 0.0;
+            }
+        }
+        return result;
+    }
+
+    private static double[][] toDoubleArray(double[][] channel) {
+        // channel[x][y]: x goes up to channel.length, y up to channel[0].length
+        int w = channel.length;
+        int h = channel[0].length;
+
+        double[][] result = new double[h][2 * w];
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                // Real part at index 2*x, imaginary part at 2*x+1
                 result[y][2 * x] = channel[x][y];
                 result[y][2 * x + 1] = 0.0;
             }
@@ -37,14 +55,28 @@ public class FourierDownsample {
         return result;
     }
 
+    private static double[][] removeImaginaryComponents(double[][] complexArray) {
+        int h = complexArray.length;
+        int w = complexArray[0].length / 2; // Since every real value is at 2*x, the width is half
+
+        double[][] result = new double[w][h]; // Restore to original dimensions
+
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                result[x][y] = complexArray[y][2 * x]; // Take only the real part
+            }
+        }
+        return result;
+    }
+
     public static Image encode(Image storage, Image toEncode) {
         int h = storage.height; // number of rows
         int w = storage.width; // number of columns
 
         // Convert each RGB channel to double arrays for FFT
-        double[][] r = toDoubleArray(storage.r);
-        double[][] g = toDoubleArray(storage.g);
-        double[][] b = toDoubleArray(storage.b);
+        double[][] r = toDoubleArray(storage.labL);
+        double[][] g = toDoubleArray(storage.labA);
+        double[][] b = toDoubleArray(storage.labB);
 
         // Perform forward FFT on each channel
         DoubleFFT_2D fft2D = new DoubleFFT_2D(h, w);
@@ -65,13 +97,14 @@ public class FourierDownsample {
                 double angleB = Math.atan2(b[y][imagIndex], b[y][realIndex]);
 
                 // Use the toEncode pixel magnitude
-                double magR = toEncode.r[2 * x][2 * y] * 100;
-                double magG = toEncode.g[2 * x][2 * y] * 100;
-                double magB = toEncode.b[2 * x][2 * y] * 100;
 
                 double magRStorage = Math.sqrt(r[y][realIndex] * r[y][realIndex] + r[y][imagIndex] * r[y][imagIndex]);
                 double magGStorage = Math.sqrt(g[y][realIndex] * g[y][realIndex] + g[y][imagIndex] * g[y][imagIndex]);
                 double magBStorage = Math.sqrt(b[y][realIndex] * b[y][realIndex] + b[y][imagIndex] * b[y][imagIndex]);
+
+                double magR = alpha * (toEncode.r[2 * x][2 * y] * scale) + (1 - alpha) * magRStorage;
+                double magG = alpha * (toEncode.g[2 * x][2 * y] * scale) + (1 - alpha) * magGStorage;
+                double magB = alpha * (toEncode.b[2 * x][2 * y] * scale) + (1 - alpha) * magBStorage;
 
                 // System.out.println(magRStorage/magR);
 
@@ -96,12 +129,7 @@ public class FourierDownsample {
         fft2D.complexInverse(g, true);
         fft2D.complexInverse(b, true);
 
-        // Convert the result to integer image channels
-        int[][] newR = toIntArray(r);
-        int[][] newG = toIntArray(g);
-        int[][] newB = toIntArray(b);
-
-        return new Image(newR, newG, newB);
+        return new Image(removeImaginaryComponents(r), removeImaginaryComponents(g), removeImaginaryComponents(b));
     }
 
     private static void enforceConjugateSymmetry(double[][] data, int h, int w) {
@@ -136,9 +164,9 @@ public class FourierDownsample {
         int w = encoded.width;
 
         // Convert each RGB channel to double arrays for FFT
-        double[][] r = toDoubleArray(encoded.r);
-        double[][] g = toDoubleArray(encoded.g);
-        double[][] b = toDoubleArray(encoded.b);
+        double[][] r = toDoubleArray(encoded.labL);
+        double[][] g = toDoubleArray(encoded.labA);
+        double[][] b = toDoubleArray(encoded.labB);
 
         // Perform forward FFT on each channel
         DoubleFFT_2D fft2D = new DoubleFFT_2D(h, w);
@@ -146,9 +174,9 @@ public class FourierDownsample {
         fft2D.complexForward(g);
         fft2D.complexForward(b);
 
-        int[][] newR = new int[w / 2 - w / crop][h / 2 - h / crop];
-        int[][] newG = new int[w / 2 - w / crop][h / 2 - h / crop];
-        int[][] newB = new int[w / 2 - w / crop][h / 2 - h / crop];
+        double[][] newR = new double[w / 2 - w / crop][h / 2 - h / crop];
+        double[][] newG = new double[w / 2 - w / crop][h / 2 - h / crop];
+        double[][] newB = new double[w / 2 - w / crop][h / 2 - h / crop];
 
         for (int y = h / crop; y < h / 2; y++) {
             for (int x = w / crop; x < w / 2; x++) {
@@ -156,11 +184,11 @@ public class FourierDownsample {
                 int imagIndex = 2 * x + 1;
 
                 int magRStorage = (int) (Math
-                        .sqrt(r[y][realIndex] * r[y][realIndex] + r[y][imagIndex] * r[y][imagIndex]) / 100.0);
+                        .sqrt(r[y][realIndex] * r[y][realIndex] + r[y][imagIndex] * r[y][imagIndex]) / scale / alpha);
                 int magGStorage = (int) (Math
-                        .sqrt(g[y][realIndex] * g[y][realIndex] + g[y][imagIndex] * g[y][imagIndex]) / 100.0);
+                        .sqrt(g[y][realIndex] * g[y][realIndex] + g[y][imagIndex] * g[y][imagIndex]) / scale / alpha);
                 int magBStorage = (int) (Math
-                        .sqrt(b[y][realIndex] * b[y][realIndex] + b[y][imagIndex] * b[y][imagIndex]) / 100.0);
+                        .sqrt(b[y][realIndex] * b[y][realIndex] + b[y][imagIndex] * b[y][imagIndex]) / scale / alpha);
 
                 newR[x - w / crop][y - h / crop] = magRStorage;
                 newG[x - w / crop][y - h / crop] = magGStorage;
@@ -168,6 +196,6 @@ public class FourierDownsample {
             }
         }
 
-        return new Image(newR, newG, newB);
+        return new Image(toIntArray(removeImaginaryComponents(newR)), toIntArray(removeImaginaryComponents(newG)), toIntArray(removeImaginaryComponents(newB)));
     }
 }
