@@ -3,7 +3,16 @@ package processors;
 import org.jtransforms.fft.DoubleFFT_2D;
 import filereader.Image;
 
-public class PhaseEncode {
+public class PhaseEncode implements ImageProcessor {
+    private static PhaseEncode instance = new PhaseEncode();
+
+    private PhaseEncode() {
+        PhaseEncode.instance = this;
+    }
+
+    public static PhaseEncode instance() {
+        return PhaseEncode.instance;
+    }
 
     private static double[][] toDoubleArray(int[][] channel) {
         // channel[x][y]: x goes up to channel.length, y up to channel[0].length
@@ -35,7 +44,8 @@ public class PhaseEncode {
         return result;
     }
 
-    public static Image encode(Image storage, Image toEncode) {
+    @Override
+    public Image encode(Image storage, Image toEncode) {
         int h = storage.height; // number of rows
         int w = storage.width; // number of columns
 
@@ -138,7 +148,8 @@ public class PhaseEncode {
         }
     }
 
-    public static Image decode(Image encoded) {
+    @Override
+    public Image decode(Image encoded) {
         int h = encoded.height;
         int w = encoded.width;
 

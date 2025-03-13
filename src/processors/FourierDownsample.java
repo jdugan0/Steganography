@@ -3,7 +3,16 @@ package processors;
 import org.jtransforms.fft.DoubleFFT_2D;
 import filereader.Image;
 
-public class FourierDownsample {
+public class FourierDownsample implements ImageProcessor {
+    private static FourierDownsample instance = new FourierDownsample();
+
+    private FourierDownsample() {
+        FourierDownsample.instance = this;
+    }
+
+    public static FourierDownsample instance() {
+        return FourierDownsample.instance;
+    }
 
     public static int crop = 32;
     public static double alpha = 1;
@@ -69,7 +78,8 @@ public class FourierDownsample {
         return result;
     }
 
-    public static Image encode(Image storage, Image toEncode) {
+    @Override
+    public Image encode(Image storage, Image toEncode) {
         int h = storage.height; // number of rows
         int w = storage.width; // number of columns
 
@@ -159,7 +169,8 @@ public class FourierDownsample {
         }
     }
 
-    public static Image decode(Image encoded) {
+    @Override
+    public Image decode(Image encoded) {
         int h = encoded.height;
         int w = encoded.width;
 
