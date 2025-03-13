@@ -5,13 +5,12 @@ import processors.ImageProcessor;
 
 public class Main {
   /** Runs CLI. */
-  public static void main(String... args) {
+  public static void main(String... args) { // prompt help
+    System.out.println("Type 'help' for assistance.");
     Scanner scanner = new Scanner(System.in);
     // get input
     String line;
     line = scanner.nextLine();
-    // prompt help
-    System.out.println("Type 'help' for assistance.");
     // loop until exit
     while (!line.equals("exit")) {
       try {
