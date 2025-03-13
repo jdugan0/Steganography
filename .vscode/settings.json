@@ -1,0 +1,7 @@
+{
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar",
+        "c:\\Users\\nitsu\\Downloads\\JTransforms-3.1-with-dependencies.jar",
+        "JTransforms-3.1-with-dependencies.jar"
+    ]
+}
