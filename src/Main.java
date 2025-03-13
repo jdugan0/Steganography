@@ -20,6 +20,9 @@ public class Main {
       } catch (IllegalArgumentException e) {
         System.out.println("Not a valid command. Type 'help' for instructions.");
       }
+      catch (Exception e){ 
+        System.out.println("Command failed. Please type 'help' for instructions.");
+      }
       line = scanner.nextLine();
     }
     scanner.close();
