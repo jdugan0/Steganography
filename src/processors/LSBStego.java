@@ -2,9 +2,9 @@ package processors;
 
 import filereader.Image;
 
-public class BitNoiseProcessor implements ImageProcessor {
+public class LSBStego implements ImageProcessor {
   /** static instance */
-  private static BitNoiseProcessor instance = new BitNoiseProcessor(4);
+  private static LSBStego instance = new LSBStego(4);
 
   /** noise threshold for encode/decode (see constructor note) */
   private int threshold;
@@ -17,8 +17,8 @@ public class BitNoiseProcessor implements ImageProcessor {
    * number of bits in a source image that will
    * be replaced by those of the encode image.
    */
-  private BitNoiseProcessor(int threshold) {
-    BitNoiseProcessor.instance = this;
+  private LSBStego(int threshold) {
+    LSBStego.instance = this;
     this.threshold = threshold;
   }
 
@@ -26,19 +26,19 @@ public class BitNoiseProcessor implements ImageProcessor {
    * Gets the static instance of this class for method calls.
    * @return {@code BitNoiseProcessor} instance
    */
-  public static BitNoiseProcessor instance() {
-    return BitNoiseProcessor.instance;
+  public static LSBStego instance() {
+    return LSBStego.instance;
   }
 
   /**
    * Encodes the {@code encode} image into the data of the {@code source}
-   * image, replacing the {@link BitNoiseProcessor#getThreshold()} least significant (rightmost)
+   * image, replacing the {@link LSBStego#getThreshold()} least significant (rightmost)
    * bits of {@code source} with the most significant (leftmost) bits of
    * {@code encode}. The output image will appear of lower quality than either
    * input image.
    * @param source {@link Image} to conceal the encoded data. The output image of this
    * method will resemble this image.
-   * @param encode {@link Image} whose data to encode. If {@link BitNoiseProcessor#decode(Image)}
+   * @param encode {@link Image} whose data to encode. If {@link LSBStego#decode(Image)}
    * is called on the output of this method, its output will resemble this image.
    * @return new {@link Image} with the data of {@code source} and {@code encode}.
    */
@@ -49,12 +49,12 @@ public class BitNoiseProcessor implements ImageProcessor {
 
   /**
    * Decodes an image encoded into {@code decode} by
-   * {@link BitNoiseProcessor#encode(Image, Image)}, taking the
-   * {@link BitNoiseProcessor#getThreshold()} rightmost bits of
+   * {@link LSBStego#encode(Image, Image)}, taking the
+   * {@link LSBStego#getThreshold()} rightmost bits of
    * the image as the leftmost bits of the output image. All
    * remaining bits will be 0. Consequently, the output of this
    * method will be of lower quality than the {@code encode}
-   * argument passed to {@link BitNoiseProcessor#encode(Image, Image)}.
+   * argument passed to {@link LSBStego#encode(Image, Image)}.
    * @param decode {@link Image} with image encoded.
    */
   @Override
@@ -63,7 +63,7 @@ public class BitNoiseProcessor implements ImageProcessor {
   }
 
   /**
-   * See {@link BitNoiseProcessor#encode(Image, Image)}.
+   * See {@link LSBStego#encode(Image, Image)}.
    * @param noiseThreshold Number of rightmost bits of
    * {@code source} to replace.
    */
@@ -105,7 +105,7 @@ public class BitNoiseProcessor implements ImageProcessor {
   }
 
   /**
-   * See {@link BitNoiseProcessor#decode(Image)}.
+   * See {@link LSBStego#decode(Image)}.
    * @param noiseThreshold Number of rightmost bits
    * to take as encoded data.
    */

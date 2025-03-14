@@ -3,8 +3,8 @@ package cli;
 import java.util.ArrayList;
 import java.util.Optional;
 
-import processors.BitNoiseProcessor;
-import processors.FourierDownsample;
+import processors.LSBStego;
+import processors.FourierStego;
 import processors.ImageProcessor;
 import util.ParseHelpers;
 
@@ -17,8 +17,8 @@ public class ParsedCommand {
    * Allowable {@code ImageProcessor} types.
    */
   public enum ProcessorType {
-    kBitnoise(BitNoiseProcessor.instance()),
-    kFourier(FourierDownsample.instance());
+    kLSB(LSBStego.instance()),
+    kFourier(FourierStego.instance());
 
     /** static {@code ImageProcessor} instance associated with type */
     private ImageProcessor instance;
@@ -175,7 +175,7 @@ public class ParsedCommand {
         .equals("bitnoisethreshset:")
         && tokens.length == 3) { // detect setting bitnoise threshold
       try {
-        BitNoiseProcessor.instance().setThreshold(Integer.parseInt(tokens[2]));
+        LSBStego.instance().setThreshold(Integer.parseInt(tokens[2]));
         return true;
       } catch (NumberFormatException n) { // throw exception if parameter invalid
         throw new IllegalArgumentException();

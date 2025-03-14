@@ -10,7 +10,7 @@ public class Main {
     Scanner scanner = new Scanner(System.in);
     // get input
     String line;
-    line = scanner.nextLine();
+    line = scanner.nextLine().toLowerCase();
     // loop until exit
     while (!line.equals("exit")) {
       try {

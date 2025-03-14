@@ -6,15 +6,15 @@ import filereader.FileReader;
 import filereader.Image;
 import filereader.FileReader.ImageType;
 
-public class FourierDownsample implements ImageProcessor {
-    private static FourierDownsample instance = new FourierDownsample();
+public class FourierStego implements ImageProcessor {
+    private static FourierStego instance = new FourierStego();
 
-    private FourierDownsample() {
-        FourierDownsample.instance = this;
+    private FourierStego() {
+        FourierStego.instance = this;
     }
 
-    public static FourierDownsample instance() {
-        return FourierDownsample.instance;
+    public static FourierStego instance() {
+        return FourierStego.instance;
     }
 
     public static int crop = 32;
