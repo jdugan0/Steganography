@@ -279,9 +279,9 @@ public class Image {
         double[][] data = new double[image.width * image.height][3];
         for (int x = 0; x < image.width; x++) {
             for (int y = 0; y < image.height; y++) {
-                data[x * image.height + y][0] = image.labL[x][y];
-                data[x * image.height + y][1] = image.labA[x][y];
-                data[x * image.height + y][2] = image.labB[x][y];
+                data[x * image.height + y][0] = image.r[x][y];
+                data[x * image.height + y][1] = image.g[x][y];
+                data[x * image.height + y][2] = image.b[x][y];
             }
         }
         return data;
@@ -338,28 +338,44 @@ public class Image {
 
     public static double[][] applyTransformationMatrix(Image image) {
         RealMatrix transformationMatrix = getTransformationMatrix(image);
-        double[][] data = getImageData(image);
-        double[][] transformedData = transformationMatrix.transpose().multiply(new Array2DRowRealMatrix(data))
+        double[][] ogData = getImageData(image);
+        double[][] data = centerData(ogData, getMeans(ogData));
+        double[][] transformedData = new Array2DRowRealMatrix(data)
+                .multiply(transformationMatrix)
                 .getData();
         return transformedData;
     }
 
-    public static Image imageFromTransform(double[][] transformedData, RealMatrix transform) {
-        double[][] data = transform.multiply(new Array2DRowRealMatrix(transformedData)).getData();
-        double[][] labL = new double[transformedData.length][transformedData[0].length];
-        double[][] labA = new double[transformedData.length][transformedData[0].length];
-        double[][] labB = new double[transformedData.length][transformedData[0].length];
-        for (int i = 0; i < transformedData.length; i++) {
-            labL[i] = new double[] { data[i][0], data[i][1], data[i][2] };
-            labA[i] = new double[] { data[i][3], data[i][4], data[i][5] };
-            labB[i] = new double[] { data[i][6], data[i][7], data[i][8] };
+    public static Image imageFromTransform(double[][] transformedData, RealMatrix transform, double[] means, int width,
+            int height) {
+        // Inverse transform (note: if transform is orthogonal, its transpose is its
+        // inverse)
+        double[][] originalData = new Array2DRowRealMatrix(transformedData)
+                .multiply(transform.transpose())
+                .getData();
+
+        // Allocate Lab channels with the original image dimensions.
+        int[][] r = new int[width][height];
+        int[][] g = new int[width][height];
+        int[][] b = new int[width][height];
+
+        // Reconstruct the Lab channels from the data.
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                int index = x * height + y;
+                r[x][y] = (int) Math.round(Math.max(0, Math.min(originalData[index][0] + means[0], 255)));
+                g[x][y] = (int) Math.round(Math.max(0, Math.min(originalData[index][1] + means[1], 255)));
+                b[x][y] = (int) Math.round(Math.max(0, Math.min(originalData[index][2] + means[2], 255)));
+
+            }
         }
-        return new Image(labL, labA, labB);
+        return new Image(r, g, b);
     }
 
     public static Image applyTransformation(Image image) {
         double[][] transformedData = applyTransformationMatrix(image);
-        return imageFromTransform(transformedData, getTransformationMatrix(image));
+        return imageFromTransform(transformedData, getTransformationMatrix(image), getMeans(getImageData(image)),
+                image.width, image.height);
     }
 
 }
