@@ -2,6 +2,12 @@ package filereader;
 
 import java.awt.image.BufferedImage;
 
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.EigenDecomposition;
+import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.linear.RealVector;
+import org.apache.commons.math3.stat.correlation.Covariance;
+
 public class Image {
     // RGB channels (0-255)
     public final int[][] r;
@@ -267,6 +273,93 @@ public class Image {
         }
         // Use the existing constructor that computes Lab channels from RGB arrays.
         return new Image(newR, newG, newB);
+    }
+
+    public static double[][] getImageData(Image image) {
+        double[][] data = new double[image.width * image.height][3];
+        for (int x = 0; x < image.width; x++) {
+            for (int y = 0; y < image.height; y++) {
+                data[x * image.height + y][0] = image.labL[x][y];
+                data[x * image.height + y][1] = image.labA[x][y];
+                data[x * image.height + y][2] = image.labB[x][y];
+            }
+        }
+        return data;
+    }
+
+    public static double[][] centerData(double[][] data, double[] means) {
+        int n = data.length;
+        int dim = data[0].length;
+
+        double[][] centeredData = new double[n][dim];
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < dim; j++) {
+                centeredData[i][j] = data[i][j] - means[j];
+            }
+        }
+        return centeredData;
+    }
+
+    public static double[] getMeans(double[][] data) {
+        int n = data.length;
+        int dim = data[0].length;
+
+        double[] means = new double[dim];
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < dim; j++) {
+                means[j] += data[i][j];
+            }
+        }
+        for (int j = 0; j < dim; j++) {
+            means[j] /= n;
+        }
+        return means;
+    }
+
+    public static RealMatrix getTransformationMatrix(Image image) {
+        double[][] data = getImageData(image);
+        double[][] centeredData = centerData(data, getMeans(data));
+        RealMatrix matrix = new Array2DRowRealMatrix(centeredData);
+        RealMatrix covarianceMatrix = new Covariance(matrix).getCovarianceMatrix();
+        EigenDecomposition ed = new EigenDecomposition(covarianceMatrix);
+        RealVector pc1 = ed.getEigenvector(0);
+        RealVector pc2 = ed.getEigenvector(1);
+        RealVector pc3 = ed.getEigenvector(2);
+
+        int dim = data[0].length;
+
+        RealMatrix transformationMatrix = new Array2DRowRealMatrix(dim, dim);
+        transformationMatrix.setColumnVector(0, pc1);
+        transformationMatrix.setColumnVector(1, pc2);
+        transformationMatrix.setColumnVector(2, pc3);
+
+        return transformationMatrix;
+    }
+
+    public static double[][] applyTransformationMatrix(Image image) {
+        RealMatrix transformationMatrix = getTransformationMatrix(image);
+        double[][] data = getImageData(image);
+        double[][] transformedData = transformationMatrix.transpose().multiply(new Array2DRowRealMatrix(data))
+                .getData();
+        return transformedData;
+    }
+
+    public static Image imageFromTransform(double[][] transformedData, RealMatrix transform) {
+        double[][] data = transform.multiply(new Array2DRowRealMatrix(transformedData)).getData();
+        double[][] labL = new double[transformedData.length][transformedData[0].length];
+        double[][] labA = new double[transformedData.length][transformedData[0].length];
+        double[][] labB = new double[transformedData.length][transformedData[0].length];
+        for (int i = 0; i < transformedData.length; i++) {
+            labL[i] = new double[] { data[i][0], data[i][1], data[i][2] };
+            labA[i] = new double[] { data[i][3], data[i][4], data[i][5] };
+            labB[i] = new double[] { data[i][6], data[i][7], data[i][8] };
+        }
+        return new Image(labL, labA, labB);
+    }
+
+    public static Image applyTransformation(Image image) {
+        double[][] transformedData = applyTransformationMatrix(image);
+        return imageFromTransform(transformedData, getTransformationMatrix(image));
     }
 
 }
