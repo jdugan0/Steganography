@@ -8,16 +8,6 @@ import filereader.FileReader.ImageType;
 public class DCTStego implements ImageProcessor {
     private static DCTStego instance = new DCTStego();
 
-    // Blending parameters: alpha near 1 means mostly secret data is embedded.
-    public static double alpha = 0.8;
-    public static double scale = 1.0;
-    
-    // Block-based parameters.
-    public static int blockSize = 8; // Use 8x8 blocks
-    // Selected coefficient within each block (avoid DC at [0][0])
-    public static int embedX = 3;
-    public static int embedY = 3;
-
     private DCTStego() {
         DCTStego.instance = this;
     }
@@ -26,121 +16,100 @@ public class DCTStego implements ImageProcessor {
         return DCTStego.instance;
     }
 
-    @Override
-    public Image encode(Image cover, Image toEncode) {
-        int coverW = cover.width;
-        int coverH = cover.height;
-        
-        // Number of blocks in x and y directions
-        int blocksX = coverW / blockSize;
-        int blocksY = coverH / blockSize;
-        
-        // Scale secret image to the block grid size.
-        // We assume Image.scale can produce an image with specified width and height.
-        Image secretScaled = Image.scale(toEncode, blocksX, blocksY);
-        
-        // Process each block of the cover image.
-        for (int bx = 0; bx < blocksX; bx++) {
-            for (int by = 0; by < blocksY; by++) {
-                // Create arrays for one block for each channel.
-                double[][] blockL = new double[blockSize][blockSize];
-                double[][] blockA = new double[blockSize][blockSize];
-                double[][] blockB = new double[blockSize][blockSize];
-                
-                // Copy block data from cover image channels.
-                for (int i = 0; i < blockSize; i++) {
-                    for (int j = 0; j < blockSize; j++) {
-                        int x = bx * blockSize + i;
-                        int y = by * blockSize + j;
-                        blockL[i][j] = cover.labL[x][y];
-                        blockA[i][j] = cover.labA[x][y];
-                        blockB[i][j] = cover.labB[x][y];
-                    }
-                }
-                
-                // Compute the 2D DCT on this block.
-                DoubleDCT_2D dctBlock = new DoubleDCT_2D(blockSize, blockSize);
-                dctBlock.forward(blockL, true);
-                dctBlock.forward(blockA, true);
-                dctBlock.forward(blockB, true);
-                
-                // Embed the secret data into the chosen mid-frequency coefficient.
-                // (Assuming secretScaled channels are stored in the same Lab order and that
-                // secretScaled dimensions are [blocksX][blocksY])
-                blockL[embedX][embedY] = alpha * (secretScaled.labL[bx][by] * scale)
-                        + (1 - alpha) * blockL[embedX][embedY];
-                blockA[embedX][embedY] = alpha * (secretScaled.labA[bx][by] * scale)
-                        + (1 - alpha) * blockA[embedX][embedY];
-                blockB[embedX][embedY] = alpha * (secretScaled.labB[bx][by] * scale)
-                        + (1 - alpha) * blockB[embedX][embedY];
-                
-                // Perform the inverse DCT to get the modified block.
-                dctBlock.inverse(blockL, true);
-                dctBlock.inverse(blockA, true);
-                dctBlock.inverse(blockB, true);
-                
-                // Write the modified block back into the cover image channels.
-                for (int i = 0; i < blockSize; i++) {
-                    for (int j = 0; j < blockSize; j++) {
-                        int x = bx * blockSize + i;
-                        int y = by * blockSize + j;
-                        cover.labL[x][y] = blockL[i][j];
-                        cover.labA[x][y] = blockA[i][j];
-                        cover.labB[x][y] = blockB[i][j];
-                    }
-                }
+    public static int crop = 32;
+    public static double alpha = 1;
+    public static double scale = 1;
+
+    private static double[][] toDoubleArray(int[][] channel) {
+        int w = channel.length;
+        int h = channel[0].length;
+
+        double[][] result = new double[w][h];
+        for (int x = 0; x < w; x++) {
+            for (int y = 0; y < h; y++) {
+                result[x][y] = channel[x][y];
             }
         }
-        return cover;
+        return result;
+    }
+
+    private static int[][] toIntArray(double[][] data) {
+        int w = data.length;
+        int h = data[0].length;
+        int[][] result = new int[w][h];
+
+        for (int x = 0; x < w; x++) {
+            for (int y = 0; y < h; y++) {
+                result[x][y] = (int) Math.round(data[x][y]);
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public Image encode(Image storage, Image toEncode) {
+        int h = storage.height;
+        int w = storage.width;
+
+        // Convert image channels to double arrays
+        double[][] r = storage.labL;
+        double[][] g = storage.labA;
+        double[][] b = storage.labB;
+
+        // Perform forward DCT
+        DoubleDCT_2D dct2D = new DoubleDCT_2D(w, h);
+        dct2D.forward(r, true);
+        dct2D.forward(g, true);
+        dct2D.forward(b, true);
+
+        Image scaled = Image.scale(toEncode, w, h);
+
+        // Modify DCT coefficients
+        for (int y = h / crop; y < h; y++) {
+            for (int x = w / crop; x < w; x++) {
+                r[x][y] = alpha * (scaled.labL[x][y] * scale) + (1 - alpha) * r[x][y];
+                g[x][y] = alpha * (scaled.labA[x][y] * scale) + (1 - alpha) * g[x][y];
+                b[x][y] = alpha * (scaled.labB[x][y] * scale) + (1 - alpha) * b[x][y];
+                // System.out.println(scaled.labB[x][y] / b[x][y]);
+            }
+        }
+
+        // Perform inverse DCT
+        dct2D.inverse(r, true);
+        dct2D.inverse(g, true);
+        dct2D.inverse(b, true);
+
+        return new Image(r, g, b);
     }
 
     @Override
     public Image decode(Image encoded) {
-        int coverW = encoded.width;
-        int coverH = encoded.height;
-        
-        // Number of blocks in x and y directions.
-        int blocksX = coverW / blockSize;
-        int blocksY = coverH / blockSize;
-        
-        // Prepare arrays for the recovered secret image.
-        double[][] secretL = new double[blocksX][blocksY];
-        double[][] secretA = new double[blocksX][blocksY];
-        double[][] secretB = new double[blocksX][blocksY];
-        
-        // Process each block of the encoded image.
-        for (int bx = 0; bx < blocksX; bx++) {
-            for (int by = 0; by < blocksY; by++) {
-                double[][] blockL = new double[blockSize][blockSize];
-                double[][] blockA = new double[blockSize][blockSize];
-                double[][] blockB = new double[blockSize][blockSize];
-                
-                // Copy block data from encoded image channels.
-                for (int i = 0; i < blockSize; i++) {
-                    for (int j = 0; j < blockSize; j++) {
-                        int x = bx * blockSize + i;
-                        int y = by * blockSize + j;
-                        blockL[i][j] = encoded.labL[x][y];
-                        blockA[i][j] = encoded.labA[x][y];
-                        blockB[i][j] = encoded.labB[x][y];
-                    }
-                }
-                
-                // Compute the forward DCT on the block.
-                DoubleDCT_2D dctBlock = new DoubleDCT_2D(blockSize, blockSize);
-                dctBlock.forward(blockL, true);
-                dctBlock.forward(blockA, true);
-                dctBlock.forward(blockB, true);
-                
-                // Extract the secret data from the chosen coefficient.
-                secretL[bx][by] = blockL[embedX][embedY] / (alpha * scale);
-                secretA[bx][by] = blockA[embedX][embedY] / (alpha * scale);
-                secretB[bx][by] = blockB[embedX][embedY] / (alpha * scale);
+        int h = encoded.height;
+        int w = encoded.width;
+
+        // Convert image channels to double arrays
+        double[][] r = encoded.labL;
+        double[][] g = (encoded.labA);
+        double[][] b = (encoded.labB);
+
+        // Perform forward DCT
+        DoubleDCT_2D dct2D = new DoubleDCT_2D(w, h);
+        dct2D.forward(r, true);
+        dct2D.forward(g, true);
+        dct2D.forward(b, true);
+
+        double[][] newR = new double[w - w / crop][h - h / crop];
+        double[][] newG = new double[w - w / crop][h - h / crop];
+        double[][] newB = new double[w - w / crop][h - h / crop];
+
+        for (int y = h / crop; y < h; y++) {
+            for (int x = w / crop; x < w; x++) {
+                newR[x - w / crop][y - h / crop] = r[x][y] / scale / alpha;
+                newG[x - w / crop][y - h / crop] = g[x][y] / scale / alpha;
+                newB[x - w / crop][y - h / crop] = b[x][y] / scale / alpha;
             }
         }
-        
-        // Reconstruct and return the secret image.
-        // (You can further scale this image to the original secret dimensions if needed.)
-        return new Image(secretL, secretA, secretB);
+
+        return new Image(newR, newG, newB);
     }
 }
