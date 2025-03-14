@@ -3,8 +3,9 @@ package cli;
 import java.util.ArrayList;
 import java.util.Optional;
 
-import processors.BitNoiseProcessor;
-import processors.FourierDownsample;
+import processors.LSBStego;
+import processors.DCTStego;
+import processors.FourierStego;
 import processors.ImageProcessor;
 import util.ParseHelpers;
 
@@ -17,8 +18,9 @@ public class ParsedCommand {
    * Allowable {@code ImageProcessor} types.
    */
   public enum ProcessorType {
-    kBitnoise(BitNoiseProcessor.instance()),
-    kFourier(FourierDownsample.instance());
+    kLSB(LSBStego.instance()),
+    kFourier(FourierStego.instance()),
+    kDCT(DCTStego.instance());
 
     /** static {@code ImageProcessor} instance associated with type */
     private ImageProcessor instance;
@@ -29,6 +31,7 @@ public class ParsedCommand {
 
     /**
      * Gets associated {@code ImageProcessor} instance.
+     * 
      * @return Instance.
      */
     public ImageProcessor toInstance() {
@@ -38,8 +41,8 @@ public class ParsedCommand {
 
   /** pattern of allowable input strings */
   private static final String[][] pattern = {
-    { "encode", "decode" },
-    { "--prepare", "--to:" }
+      { "encode", "decode" },
+      { "--prepare", "--to:" }
   };
 
   /** terminal help message */
@@ -64,12 +67,15 @@ public class ParsedCommand {
    * representing the input parameters.
    * 
    * @param processor Which image processor with which to run the command.
-   * @param encode If this command encodes. If {@code false}, this command decodes.
-   * @param prepare For encoding only. This optional instructs that the encoded
-   * image be saved to the Images/Decode folder if {@code true} and to Images/Output
-   * if {@code false}. Empty if this command decodes.
-   * @param path Present if {@code encode --to:}, specifying the path to save the
-   * encoded image to. Empty otherwise.
+   * @param encode    If this command encodes. If {@code false}, this command
+   *                  decodes.
+   * @param prepare   For encoding only. This optional instructs that the encoded
+   *                  image be saved to the Images/Decode folder if {@code true}
+   *                  and to Images/Output
+   *                  if {@code false}. Empty if this command decodes.
+   * @param path      Present if {@code encode --to:}, specifying the path to save
+   *                  the
+   *                  encoded image to. Empty otherwise.
    */
   private ParsedCommand(ProcessorType processor, boolean encode,
       Optional<Boolean> prepare, Optional<String> path) {
@@ -86,7 +92,7 @@ public class ParsedCommand {
    * @param command User's command.
    * @return {@code new ParsedCommand} containing the parsed parameters.
    * @throws IllegalArgumentException if the input command does not match
-   * {@code pattern}.
+   *                                  {@code pattern}.
    */
   public static ParsedCommand parse(String command)
       throws IllegalArgumentException {
@@ -153,15 +159,20 @@ public class ParsedCommand {
   /**
    * Parses this command for special formats exclusive to {@code pattern},
    * executing it if a special command is detected. It is good practice to
-   * call this method on user input before passing it to {@link ParsedCommand#parse(String)},
-   * as {@code parse()}<i>will</i> throw an exception even when the command meets this
+   * call this method on user input before passing it to
+   * {@link ParsedCommand#parse(String)},
+   * as {@code parse()}<i>will</i> throw an exception even when the command meets
+   * this
    * method's standards of validity.
+   * 
    * @param command String representing a command to check/execute.
    * @return {@code true} if a special command was detected and executed,
-   * {@code false} otherwise.
+   *         {@code false} otherwise.
    * @throws IllegalArgumentException if a special command is detected with
-   * error in parameters. No exception will be thrown if this command satisfies
-   * the requirements of {@link ParsedCommand#parse(String)}.
+   *                                  error in parameters. No exception will be
+   *                                  thrown if this command satisfies
+   *                                  the requirements of
+   *                                  {@link ParsedCommand#parse(String)}.
    */
   public static boolean executeSpecial(String command)
       throws IllegalArgumentException {
@@ -175,7 +186,7 @@ public class ParsedCommand {
         .equals("bitnoisethreshset:")
         && tokens.length == 3) { // detect setting bitnoise threshold
       try {
-        BitNoiseProcessor.instance().setThreshold(Integer.parseInt(tokens[2]));
+        LSBStego.instance().setThreshold(Integer.parseInt(tokens[2]));
         return true;
       } catch (NumberFormatException n) { // throw exception if parameter invalid
         throw new IllegalArgumentException();
@@ -184,7 +195,7 @@ public class ParsedCommand {
       return false;
     }
   }
-  
+
   /** Prints terminal help message. */
   public static void printHelpMessage() {
     System.out.println(help);
@@ -204,7 +215,7 @@ public class ParsedCommand {
    * Get whether this command encodes.
    * 
    * @return {@code true} if encoding,
-   * {@code false} if decoding.
+   *         {@code false} if decoding.
    */
   public boolean isEncode() {
     return encode;
@@ -214,8 +225,8 @@ public class ParsedCommand {
    * Get preparation status.
    * 
    * @return Empty {@code Optional} if this command decodes.
-   * Otherwise, {@code true} if this command encodes to the
-   * decode folder and {@code false} if encoding to output.
+   *         Otherwise, {@code true} if this command encodes to the
+   *         decode folder and {@code false} if encoding to output.
    */
   public Optional<Boolean> isPrepare() {
     return prepare;
@@ -225,8 +236,8 @@ public class ParsedCommand {
    * Get path for {@code encode --to:}.
    * 
    * @return Empty {@code Optional} if
-   * representing a different command pattern.
-   * If present, represents a relative file path.
+   *         representing a different command pattern.
+   *         If present, represents a relative file path.
    */
   public Optional<String> getPath() {
     return path;
