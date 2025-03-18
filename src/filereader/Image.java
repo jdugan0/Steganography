@@ -2,6 +2,12 @@ package filereader;
 
 import java.awt.image.BufferedImage;
 
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.EigenDecomposition;
+import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.linear.RealVector;
+import org.apache.commons.math3.stat.correlation.Covariance;
+
 public class Image {
     // RGB channels (0-255)
     public final int[][] r;
@@ -267,6 +273,109 @@ public class Image {
         }
         // Use the existing constructor that computes Lab channels from RGB arrays.
         return new Image(newR, newG, newB);
+    }
+
+    public static double[][] getImageData(Image image) {
+        double[][] data = new double[image.width * image.height][3];
+        for (int x = 0; x < image.width; x++) {
+            for (int y = 0; y < image.height; y++) {
+                data[x * image.height + y][0] = image.r[x][y];
+                data[x * image.height + y][1] = image.g[x][y];
+                data[x * image.height + y][2] = image.b[x][y];
+            }
+        }
+        return data;
+    }
+
+    public static double[][] centerData(double[][] data, double[] means) {
+        int n = data.length;
+        int dim = data[0].length;
+
+        double[][] centeredData = new double[n][dim];
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < dim; j++) {
+                centeredData[i][j] = data[i][j] - means[j];
+            }
+        }
+        return centeredData;
+    }
+
+    public static double[] getMeans(double[][] data) {
+        int n = data.length;
+        int dim = data[0].length;
+
+        double[] means = new double[dim];
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < dim; j++) {
+                means[j] += data[i][j];
+            }
+        }
+        for (int j = 0; j < dim; j++) {
+            means[j] /= n;
+        }
+        return means;
+    }
+
+    public static RealMatrix getTransformationMatrix(Image image) {
+        double[][] data = getImageData(image);
+        double[][] centeredData = centerData(data, getMeans(data));
+        RealMatrix matrix = new Array2DRowRealMatrix(centeredData);
+        RealMatrix covarianceMatrix = new Covariance(matrix).getCovarianceMatrix();
+        EigenDecomposition ed = new EigenDecomposition(covarianceMatrix);
+        RealVector pc1 = ed.getEigenvector(0);
+        RealVector pc2 = ed.getEigenvector(1);
+        RealVector pc3 = ed.getEigenvector(2);
+
+        int dim = data[0].length;
+
+        RealMatrix transformationMatrix = new Array2DRowRealMatrix(dim, dim);
+        transformationMatrix.setColumnVector(0, pc1);
+        transformationMatrix.setColumnVector(1, pc2);
+        transformationMatrix.setColumnVector(2, pc3);
+
+        return transformationMatrix;
+    }
+
+    public static double[][] applyTransformationMatrix(Image image) {
+        RealMatrix transformationMatrix = getTransformationMatrix(image);
+        double[][] ogData = getImageData(image);
+        double[][] data = centerData(ogData, getMeans(ogData));
+        double[][] transformedData = new Array2DRowRealMatrix(data)
+                .multiply(transformationMatrix)
+                .getData();
+        return transformedData;
+    }
+
+    public static Image imageFromTransform(double[][] transformedData, RealMatrix transform, double[] means, int width,
+            int height) {
+        // Inverse transform (note: if transform is orthogonal, its transpose is its
+        // inverse)
+        double[][] originalData = new Array2DRowRealMatrix(transformedData)
+                .multiply(transform.transpose())
+                .getData();
+
+        // Allocate Lab channels with the original image dimensions.
+        int[][] r = new int[width][height];
+        int[][] g = new int[width][height];
+        int[][] b = new int[width][height];
+
+        // Reconstruct the Lab channels from the data.
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                int index = x * height + y;
+                r[x][y] = (int) Math.round(Math.max(0, Math.min(originalData[index][0] + means[0], 255)));
+                g[x][y] = (int) Math.round(Math.max(0, Math.min(originalData[index][1] + means[1], 255)));
+                b[x][y] = (int) Math.round(Math.max(0, Math.min(originalData[index][2] + means[2], 255)));
+
+            }
+        }
+        return new Image(r, g, b);
+    }
+
+    public static Image applyTransformation(Image image) {
+        double[][] transformedData = applyTransformationMatrix(image);
+        return imageFromTransform(transformedData, getTransformationMatrix(image), getMeans(getImageData(image)),
+                image.width, image.height);
     }
 
 }

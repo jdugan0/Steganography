@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Optional;
 
 import processors.LSBStego;
+import processors.PCAStego;
 import processors.FourierStego;
 import processors.ImageProcessor;
 import util.ParseHelpers;
@@ -18,6 +19,7 @@ public class ParsedCommand {
    */
   public enum ProcessorType {
     kLSB(LSBStego.instance()),
+    kPCA(PCAStego.instance()),
     kFourier(FourierStego.instance());
 
     /** static {@code ImageProcessor} instance associated with type */
